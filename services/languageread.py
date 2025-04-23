@@ -76,7 +76,18 @@ def compile_and_run(file_path):
         return f"Unsupported file type: {ext}"
 
 if __name__ == "__main__":
-    # Detect all supported files in the current directory
+    # Ask the user for the directory path
+    directory = input("Enter the path to the directory containing the files: ")
+
+    try:
+        # Change to the specified directory
+        os.chdir(directory)
+        print(f"Changed directory to {directory}")
+    except FileNotFoundError:
+        print(f"Error: Directory {directory} not found.")
+        exit(1)
+
+    # Detect all supported files in the specified directory
     files = glob.glob("*.c") + glob.glob("*.cpp") + glob.glob("*.java") + glob.glob("*.cs") + glob.glob("*.py") + glob.glob("*.js") + glob.glob("*.go")
     results = {}
 
@@ -85,7 +96,9 @@ if __name__ == "__main__":
         result = compile_and_run(file)
         results[file] = result
 
-    # Write results to a .txt file
-    with open("results.txt", "w") as f:
+    # Write results to a .txt file in the BasicIDE/src directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # Get the directory of the script
+    results_file_path = os.path.join(script_dir, "results.txt")
+    with open(results_file_path, "w") as f:
         for filename, output in results.items():
             f.write(f'"{filename}":"{output}",\n')
