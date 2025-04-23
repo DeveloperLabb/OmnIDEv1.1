@@ -1,0 +1,91 @@
+import subprocess
+import os
+import glob
+
+def compile_and_run(file_path):
+    # Get the file extension
+    _, ext = os.path.splitext(file_path)
+
+    if ext == ".c":
+        # C Compilation and Execution
+        output_binary = os.path.splitext(file_path)[0]
+        try:
+            subprocess.run(["gcc", file_path, "-o", output_binary], check=True)
+            print(f"C Compilation successful for {file_path}!")
+            result = subprocess.run([f"./{output_binary}"], check=True, stdout=subprocess.PIPE, text=True)
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"C Error for {file_path}: {e}"
+    elif ext == ".cpp":
+        # C++ Compilation and Execution
+        output_binary = os.path.splitext(file_path)[0]
+        try:
+            subprocess.run(["g++", file_path, "-o", output_binary], check=True)
+            print(f"C++ Compilation successful for {file_path}!")
+            result = subprocess.run([f"./{output_binary}"], check=True, stdout=subprocess.PIPE, text=True)
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"C++ Error for {file_path}: {e}"
+    elif ext == ".java":
+        # Java Compilation and Execution
+        class_name = os.path.splitext(os.path.basename(file_path))[0]
+        try:
+            subprocess.run(["javac", file_path], check=True)
+            print(f"Java Compilation successful for {file_path}!")
+            result = subprocess.run(["java", class_name], check=True, stdout=subprocess.PIPE, text=True)
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"Java Error for {file_path}: {e}"
+    elif ext == ".cs":
+        # C# Compilation and Execution using dotnet
+        try:
+            # Directly run the C# file using dotnet
+            result = subprocess.run(["dotnet", "run", "--source", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            print(f"C# Execution successful for {file_path}!")
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"C# Error for {file_path}: {e}"
+    elif ext == ".py":
+        # Python Execution
+        if file_path == "multiple.py":
+            return "Skipped execution of multiple.py"
+        try:
+            result = subprocess.run(["python3", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            print(f"Python Execution successful for {file_path}!")
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"Python Error for {file_path}: {e}"
+    elif ext == ".go":
+        # Go Compilation and Execution
+        try:
+            # Directly run the Go file
+            result = subprocess.run(["go", "run", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            print(f"Go Execution successful for {file_path}!")
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"Go Error for {file_path}: {e}"
+    elif ext == ".js":
+        # JavaScript Execution
+        try:
+            result = subprocess.run(["node", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            print(f"JavaScript Execution successful for {file_path}!")
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            return f"JavaScript Error for {file_path}: {e}"
+    else:
+        return f"Unsupported file type: {ext}"
+
+if __name__ == "__main__":
+    # Detect all supported files in the current directory
+    files = glob.glob("*.c") + glob.glob("*.cpp") + glob.glob("*.java") + glob.glob("*.cs") + glob.glob("*.py") + glob.glob("*.js") + glob.glob("*.go")
+    results = {}
+
+    for file in files:
+        print(f"Processing {file}...")
+        result = compile_and_run(file)
+        results[file] = result
+
+    # Write results to a .txt file
+    with open("results.txt", "w") as f:
+        for filename, output in results.items():
+            f.write(f'"{filename}":"{output}",\n')
