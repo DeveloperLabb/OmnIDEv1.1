@@ -1,16 +1,24 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel
+from sqlalchemy import Column, Integer, Float, Date
+from sqlalchemy.orm import relationship
+from database.database import Base
 
-class Assignment:
-    def __init__(self, assignment_no: int, assignment_date: date, assignment_percent: float):
-        self.assignment_no = assignment_no
-        self.assignment_date = assignment_date
-        self.assignment_percent = assignment_percent
+class Assignment(Base):
+    __tablename__ = "Assignment"
 
-    @staticmethod
-    def from_db_row(row: tuple):
-        return Assignment(
-            assignment_no=row[0],
-            assignment_date=row[1],
-            assignment_percent=row[2]
-        )
+    assignment_no = Column("AssignmentNO", Integer, primary_key=True)
+    assignment_date = Column("AssignmentDate", Date)
+    assignment_percent = Column("AssignmentPercent", Float)
+    
+    scores = relationship("Score", back_populates="assignment", cascade="all, delete-orphan")
+
+# Add Pydantic model for response
+class AssignmentResponse(BaseModel):
+    assignment_no: int
+    assignment_date: date
+    assignment_percent: float
+
+    class Config:
+        from_attributes = True

@@ -1,13 +1,21 @@
-class Score:
-    def __init__(self, assignment_no: int, student_id: int, score: float):
-        self.assignment_no = assignment_no
-        self.student_id = student_id
-        self.score = score
+from pydantic import BaseModel
+from sqlalchemy import Column, Integer, Float, ForeignKey
+from sqlalchemy.orm import relationship
+from database.database import Base
 
-    @staticmethod
-    def from_db_row(row: tuple):
-        return Score(
-            assignment_no=row[0],
-            student_id=row[1],
-            score=row[2]
-        )
+class Score(Base):
+    __tablename__ = "Scores"
+
+    assignment_no = Column("AssignmentNO", Integer, ForeignKey("Assignment.AssignmentNO"), primary_key=True)
+    student_id = Column("StudentID", Integer, primary_key=True)
+    score = Column("Score", Float)
+    
+    assignment = relationship("Assignment", back_populates="scores")
+
+class ScoreResponse(BaseModel):
+    assignment_no: int
+    student_id: int
+    score: float
+
+    class Config:
+        from_attributes = True
