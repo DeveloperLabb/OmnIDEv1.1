@@ -1,4 +1,0 @@
-"main.py":"Error executing query: UNIQUE constraint failed: Assignment.AssignmentNO
-Error executing query: UNIQUE constraint failed: Scores.AssignmentNO, Scores.StudentID",
-"tailwind.config.js":"",
-"postcss.config.js":"",

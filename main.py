@@ -3,6 +3,7 @@ from controllers.assignment_controller import AssignmentController
 from controllers.score_controller import ScoreController
 from views.assignment_view import AssignmentView
 from views.score_view import ScoreView
+from services.zip_extractor import ZipExtractor, SOURCE_DIRECTORY
 from datetime import date
 
 def main():
@@ -16,19 +17,13 @@ def main():
     assignment_view = AssignmentView()
     score_view = ScoreView()
 
-    try:
-        # Create a new assignment
-        assignment = assignment_controller.create_assignment(1, date.today(), 20.0)
-        if assignment:
-            assignment_view.display_assignment(assignment)
-
-        # Add a score
-        score = score_controller.add_score(1, 101, 85.5)
-        if score:
-            score_view.display_score(score)
-    finally:
-        # Always close the database connection
-        db.close()
+    extractor = ZipExtractor(SOURCE_DIRECTORY)
+    results = extractor.extract_all()
+    
+    # Print results
+    for zip_name, success in results.items():
+        status = "Successfully extracted" if success else "Failed to extract"
+        print(f"{zip_name}: {status}")
 
 if __name__ == "__main__":
     main()
