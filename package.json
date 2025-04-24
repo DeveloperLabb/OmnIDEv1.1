@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"uvicorn main_api:app --reload --port 8000\" \"wait-on tcp:5173 && electron .\"",
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
     "build": "vite build && electron-builder",
     "start": "electron .",
     "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/material": "^5.14.18",
+    "@mui/icons-material": "^5.14.18",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "electron": "^25.0.0",
@@ -27,7 +31,7 @@
     "vite": "^4.0.0",
     "concurrently": "^8.2.2",
     "wait-on": "^7.2.0",
-    "electron-reload": "^2.0.0",
+    "electron-reload": "^1.5.0",
     "electron-builder": "^24.6.4"
   },
   "build": {

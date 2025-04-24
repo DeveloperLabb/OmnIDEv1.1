@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from controllers.assignment_controller import AssignmentController
 from controllers.score_controller import ScoreController
@@ -19,13 +19,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add root endpoint that allows HEAD requests
+@app.get("/")
+@app.head("/")
+async def root():
+    return {"status": "ok"}
+
 # Initialize controllers
 assignment_controller = AssignmentController()
 score_controller = ScoreController()
 
-# Include routers
-app.include_router(assignment_controller.router)
-app.include_router(score_controller.router)
+# Include routers with prefix
+app.include_router(assignment_controller.router, prefix="/api")
+app.include_router(score_controller.router, prefix="/api")
 
 if __name__ == "__main__":
     uvicorn.run("main_api:app", host="127.0.0.1", port=8000, reload=True)

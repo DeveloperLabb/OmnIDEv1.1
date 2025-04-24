@@ -1,8 +1,26 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
+
+let mainWindow;
+let uvicornProcess;
+
+function startUvicornServer() {
+  uvicornProcess = spawn('uvicorn', ['main_api:app', '--reload', '--host', 'localhost', '--port', '8000'], {
+    shell: true
+  });
+
+  uvicornProcess.stdout.on('data', (data) => {
+    console.log(`Uvicorn: ${data}`);
+  });
+
+  uvicornProcess.stderr.on('data', (data) => {
+    console.error(`Uvicorn Error: ${data}`);
+  });
+}
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -36,6 +54,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  startUvicornServer();
   createWindow();
 
   app.on('activate', () => {
@@ -47,6 +66,22 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    if (uvicornProcess) {
+      uvicornProcess.kill();
+    }
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  if (uvicornProcess) {
+    uvicornProcess.kill();
+  }
+});
+
+process.on('SIGTERM', () => {
+  if (uvicornProcess) {
+    uvicornProcess.kill();
+  }
+  app.quit();
 });
