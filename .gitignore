@@ -66,3 +66,12 @@ package-lock.json
 .electron-builder.env
 
 *.db
+
+# PyCache
+**/__pycache__/
+__pycache__/
+
+# Venv
+# Virtual environments
+venv/
+.venv/
