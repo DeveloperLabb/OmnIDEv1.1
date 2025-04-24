@@ -64,3 +64,5 @@ package-lock.json
 
 # Electron specific
 .electron-builder.env
+
+*.db
