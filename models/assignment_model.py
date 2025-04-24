@@ -13,7 +13,6 @@ class Assignment(Base):
     assignment_date = Column("AssignmentDate", Date)
     assignment_percent = Column("AssignmentPercent", Float)
     correct_output = Column("CorrectOutput", String)
-    args = Column("Arguments", String, nullable=True)  # Optional argument
     
     scores = relationship("Score", back_populates="assignment", cascade="all, delete-orphan")
 
