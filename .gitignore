@@ -67,6 +67,3 @@ package-lock.json
 
 *.db
 **/__pycache__/
-
-# Virtual environments
-venv/
