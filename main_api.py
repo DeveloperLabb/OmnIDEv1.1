@@ -5,9 +5,6 @@ from controllers.assignment_controller import AssignmentController
 from controllers.score_controller import ScoreController
 from database.database import Base, engine, reset_database
 
-# Reset database tables (comment out after first run)
-reset_database()
-
 # Create database tables
 Base.metadata.create_all(bind=engine)
 

@@ -11,6 +11,9 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       }
+    },
+    headers: {
+      'Content-Security-Policy': "default-src 'self'; connect-src 'self' http://localhost:8000; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'"
     }
   }
 });
