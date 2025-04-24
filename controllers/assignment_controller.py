@@ -10,6 +10,7 @@ class AssignmentCreate(BaseModel):
     assignment_no: int
     assignment_date: date
     assignment_percent: float
+    correct_output: str
 
 class AssignmentController:
     def __init__(self):
@@ -25,7 +26,8 @@ class AssignmentController:
         db_assignment = Assignment(
             assignment_no=assignment.assignment_no,
             assignment_date=assignment.assignment_date,
-            assignment_percent=assignment.assignment_percent
+            assignment_percent=assignment.assignment_percent,
+            correct_output=assignment.correct_output
         )
         try:
             db.add(db_assignment)

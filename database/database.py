@@ -18,3 +18,9 @@ def get_db():
     finally:
         db.close()
 
+def reset_database():
+    # Drop all tables
+    Base.metadata.drop_all(bind=engine)
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
+
