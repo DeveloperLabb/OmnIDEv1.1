@@ -13,6 +13,7 @@ class Assignment(Base):
     assignment_date = Column("AssignmentDate", Date)
     assignment_percent = Column("AssignmentPercent", Float)
     correct_output = Column("CorrectOutput", String)
+    args = Column("Arguments", String, nullable=True)  # Optional argument
     
     scores = relationship("Score", back_populates="assignment", cascade="all, delete-orphan")
 
@@ -22,6 +23,7 @@ class AssignmentResponse(BaseModel):
     assignment_date: date
     assignment_percent: float
     correct_output: str
+    args: Optional[str] = None  # Optional argument with default value None
 
     class Config:
         from_attributes = True
