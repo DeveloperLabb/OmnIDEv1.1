@@ -66,4 +66,3 @@ package-lock.json
 .electron-builder.env
 
 *.db
-**/__pycache__/
