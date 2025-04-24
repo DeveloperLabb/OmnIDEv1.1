@@ -1,7 +1,8 @@
 import pandas as pd
 from sqlalchemy import create_engine
+from database.database import Base
 
-class ReportModel:
+class ReportModel(Base):
     def __init__(self, db_connection_string):
         self.engine = create_engine(db_connection_string)
 

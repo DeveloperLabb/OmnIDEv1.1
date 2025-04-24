@@ -3,6 +3,7 @@ import zipfile
 import shutil
 from pathlib import Path
 from typing import List
+from threading import Thread
 
 
 SOURCE_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(__file__)), "example_files")
@@ -35,15 +36,13 @@ class ZipExtractor:
         return zip_files
 
     def extract_zip(self, zip_path: Path) -> bool:
-       
         try:
             print(f"Extracting to: {self.dst_dir}")  # Debug için
 
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                
                 files_to_extract = [f for f in zip_ref.namelist() 
-                                  if not f.startswith('__MACOSX') 
-                                  and not f.startswith('._')]
+                                    if not f.startswith('__MACOSX') 
+                                    and not f.startswith('._')]
                 
                 for file in files_to_extract:
                     zip_ref.extract(file, self.dst_dir)
@@ -53,13 +52,21 @@ class ZipExtractor:
             return False
 
     def extract_all(self) -> dict:
-        
         self.ensure_dst_directory()
         results = {}
-        
-        for zip_file in self.get_zip_files():
+        threads = []
+
+        def extract_and_store_result(zip_file):
             success = self.extract_zip(zip_file)
             results[zip_file.name] = success
+
+        for zip_file in self.get_zip_files():
+            thread = Thread(target=extract_and_store_result, args=(zip_file,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
 
         return results
 
