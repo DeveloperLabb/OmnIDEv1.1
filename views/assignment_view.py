@@ -1,5 +1,5 @@
 from models.assignment_model import Assignment
-from typing import List, Optional
+from typing import List
 
 class AssignmentView:
     @staticmethod
@@ -10,10 +10,7 @@ class AssignmentView:
         print(f"Percent: {assignment.assignment_percent}%")
 
     @staticmethod
-    def display_assignment_list(assignments: List[Assignment], args: Optional[str] = None):
+    def display_assignment_list(assignments: List[Assignment]):
         print("\nAssignment List:")
         for assignment in assignments:
-            if args:
-                print(f"{args}: No: {assignment.assignment_no} | Date: {assignment.assignment_date} | Percent: {assignment.assignment_percent}%")
-            else:
-                print(f"No: {assignment.assignment_no} | Date: {assignment.assignment_date} | Percent: {assignment.assignment_percent}%")
+            print(f"No: {assignment.assignment_no} | Date: {assignment.assignment_date} | Percent: {assignment.assignment_percent}%")
