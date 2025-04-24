@@ -8,5 +8,4 @@ passlib[bcrypt]==1.7.4
 aiosqlite==0.19.0
 pytest==7.4.3
 requests==2.31.0
-pydantic==1.10.9
-sqlalchemy==2.0.21
+pandas==1.5.3
