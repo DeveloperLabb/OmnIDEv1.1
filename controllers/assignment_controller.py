@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from models.assignment_model import Assignment, AssignmentResponse
@@ -11,6 +11,7 @@ class AssignmentCreate(BaseModel):
     assignment_date: date
     assignment_percent: float
     correct_output: str
+    args: Optional[str] = None  # Optional argument with default value None
 
 class AssignmentController:
     def __init__(self):
@@ -27,7 +28,8 @@ class AssignmentController:
             assignment_name=assignment.assignment_name,
             assignment_date=assignment.assignment_date,
             assignment_percent=assignment.assignment_percent,
-            correct_output=assignment.correct_output
+            correct_output=assignment.correct_output,
+            args=assignment.args  # Handle optional argument
         )
         try:
             db.add(db_assignment)
@@ -44,5 +46,13 @@ class AssignmentController:
             raise HTTPException(status_code=404, detail=f"Assignment {assignment_no} not found")
         return db_assignment
 
-    async def get_all_assignments(self, db: Session = Depends(get_db)) -> List[Assignment]:
-        return db.query(Assignment).all()
+    async def get_all_assignments(self, db: Session = Depends(get_db), args: Optional[str] = None) -> List[AssignmentResponse]:
+        assignments = db.query(Assignment).all()
+        return [AssignmentResponse(
+            assignment_no=a.assignment_no,
+            assignment_name=a.assignment_name,
+            assignment_date=a.assignment_date,
+            assignment_percent=a.assignment_percent,
+            correct_output=a.correct_output,
+            args=args  # Pass the optional argument
+        ) for a in assignments]

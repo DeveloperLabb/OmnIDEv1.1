@@ -22,6 +22,7 @@ class AssignmentResponse(BaseModel):
     assignment_date: date
     assignment_percent: float
     correct_output: str
+    args: Optional[str] = None  # Optional argument with default value None
 
     class Config:
         from_attributes = True
