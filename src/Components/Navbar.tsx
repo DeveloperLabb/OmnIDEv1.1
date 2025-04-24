@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { AppBar, Toolbar, Button, Typography, Box, Snackbar, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { createAssignment } from '../services/api';
+import AssignmentModal from './AssignmentModal';
+
+interface AssignmentData {
+  assignment_name: string;
+  assignment_date: string;
+  assignment_percent: number;
+  correct_output: string;
+}
 
 const Navbar: React.FC = () => {
   const [snackbar, setSnackbar] = useState({
@@ -10,25 +18,24 @@ const Navbar: React.FC = () => {
     severity: 'success' as 'success' | 'error'
   });
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const handleClose = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const handleAddAssignment = async () => {
-    try {
-      const newAssignment = {
-        assignment_no: Math.floor(Math.random() * 1000),
-        assignment_date: new Date().toISOString().split('T')[0],
-        assignment_percent: 100,
-        correct_output: "Sample output"
-      };
+  const handleModalOpen = () => setIsModalOpen(true);
+  const handleModalClose = () => setIsModalOpen(false);
 
-      const response = await createAssignment(newAssignment);
+  const handleAddAssignment = async (formData: AssignmentData) => {
+    try {
+      const response = await createAssignment(formData);
       setSnackbar({
         open: true,
-        message: `Assignment ${response.assignment_no} created successfully!`,
+        message: `Assignment ${response.assignment_name} created successfully!`,
         severity: 'success'
       });
+      handleModalClose();
     } catch (error) {
       setSnackbar({
         open: true,
@@ -51,7 +58,7 @@ const Navbar: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={handleAddAssignment}
+              onClick={handleModalOpen}
               sx={{
                 backgroundColor: 'white',
                 color: '#1976d2',
@@ -77,6 +84,12 @@ const Navbar: React.FC = () => {
           </Box>
         </Toolbar>
       </AppBar>
+
+      <AssignmentModal
+        open={isModalOpen}
+        onClose={handleModalClose}
+        onSubmit={handleAddAssignment}
+      />
 
       <Snackbar 
         open={snackbar.open} 

@@ -1,5 +1,5 @@
 export interface AssignmentCreate {
-    assignment_no: number;
+    assignment_name: string;
     assignment_date: string;
     assignment_percent: number;
     correct_output: string;

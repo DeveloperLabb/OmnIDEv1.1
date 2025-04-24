@@ -8,16 +8,17 @@ from database.database import Base
 class Assignment(Base):
     __tablename__ = "Assignment"
 
-    assignment_no = Column("AssignmentNO", Integer, primary_key=True)
+    assignment_no = Column("AssignmentNO", Integer, primary_key=True, autoincrement=True)
+    assignment_name = Column("AssignmentName", String)
     assignment_date = Column("AssignmentDate", Date)
     assignment_percent = Column("AssignmentPercent", Float)
     correct_output = Column("CorrectOutput", String)
     
     scores = relationship("Score", back_populates="assignment", cascade="all, delete-orphan")
 
-# Add Pydantic model for response
 class AssignmentResponse(BaseModel):
     assignment_no: int
+    assignment_name: str
     assignment_date: date
     assignment_percent: float
     correct_output: str

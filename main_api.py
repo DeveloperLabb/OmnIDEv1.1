@@ -11,6 +11,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="OmnIDE API")
 
+# reset_database();
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +26,8 @@ app.add_middleware(
 @app.head("/")
 async def root():
     return {"status": "ok"}
+
+
 
 # Initialize controllers
 assignment_controller = AssignmentController()

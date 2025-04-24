@@ -7,7 +7,7 @@ from datetime import date
 from pydantic import BaseModel
 
 class AssignmentCreate(BaseModel):
-    assignment_no: int
+    assignment_name: str
     assignment_date: date
     assignment_percent: float
     correct_output: str
@@ -24,7 +24,7 @@ class AssignmentController:
 
     async def create_assignment(self, assignment: AssignmentCreate, db: Session = Depends(get_db)) -> Assignment:
         db_assignment = Assignment(
-            assignment_no=assignment.assignment_no,
+            assignment_name=assignment.assignment_name,
             assignment_date=assignment.assignment_date,
             assignment_percent=assignment.assignment_percent,
             correct_output=assignment.correct_output
