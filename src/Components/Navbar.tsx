@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Typography, IconButton, Box, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, IconButton, Box, Button, Tooltip } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import AssignmentModal from './AssignmentModal';
 import ConfigurationModal from './ConfigurationModal';
 import { createAssignment } from '../services/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface NavbarProps {
   toggleSidebar: () => void;
+  goToHome?: () => void; // Add this new prop
 }
 
-const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
+const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome }) => {
+  const { darkMode, toggleDarkMode } = useTheme();
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +35,12 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
 
   const handleCloseConfigModal = () => {
     setConfigModalOpen(false);
+  };
+
+  const handleLogoClick = () => {
+    if (goToHome) {
+      goToHome();
+    }
   };
 
   const handleSubmitAssignment = async (data) => {
@@ -77,10 +88,32 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div"
+            onClick={handleLogoClick}
+            sx={{ 
+              cursor: 'pointer', 
+              '&:hover': { 
+                opacity: 0.8 
+              },
+              transition: 'opacity 250ms ease'
+            }}
+          >
             OmnIDE
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
+          
+          <Tooltip title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
+            <IconButton 
+              color="inherit" 
+              onClick={toggleDarkMode} 
+              sx={{ mr: 2 }}
+            >
+              {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+            </IconButton>
+          </Tooltip>
           
           <Button
             variant="contained"

@@ -26,7 +26,8 @@ import {
 interface SidebarProps {
   open: boolean;
   onAssignmentClick?: (assignment: AssignmentType) => void;
-  onClose?: () => void; // Add onClose prop
+  onClose?: () => void;
+  transitionDuration?: number;  // Add this prop
 }
 
 interface AssignmentType {
@@ -41,7 +42,12 @@ interface AssignmentType {
 const drawerWidth = 240;
 const API_BASE_URL = 'http://localhost:8000/api';
 
-const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  open, 
+  onAssignmentClick, 
+  onClose, 
+  transitionDuration = 200  // Default to 500ms (0.5s)
+}) => {
   const [assignmentsOpen, setAssignmentsOpen] = useState(false);
   const [assignments, setAssignments] = useState<AssignmentType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -146,7 +152,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick, onClose }) =
     <Drawer
       variant="temporary"
       open={open}
-      onClose={onClose} // Close when clicking outside
+      onClose={onClose}
+      transitionDuration={transitionDuration}  // Add this prop
       sx={{
         width: drawerWidth,
         flexShrink: 0,
