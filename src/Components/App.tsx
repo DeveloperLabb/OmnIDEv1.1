@@ -20,6 +20,10 @@ const App = () => {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+  
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+  };
 
   const handleAssignmentClick = (assignment: AssignmentType) => {
     setSelectedAssignment(assignment);
@@ -32,7 +36,11 @@ const App = () => {
   return (
     <Box sx={{ display: 'flex' }}>
       <Navbar toggleSidebar={toggleSidebar} />
-      <Sidebar open={sidebarOpen} onAssignmentClick={handleAssignmentClick} />
+      <Sidebar 
+        open={sidebarOpen} 
+        onAssignmentClick={handleAssignmentClick} 
+        onClose={closeSidebar}
+      />
       
       <Box
         component="main"

@@ -29,3 +29,38 @@ export const createAssignment = async (data: Assignment) => {
 
   return response.json();
 };
+
+// Configuration functions
+export const createConfiguration = async (data: { language_name: string; path: string }) => {
+  const response = await fetch(`${API_BASE_URL}/configurations/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to create configuration');
+  }
+
+  return response.json();
+};
+
+export const updateConfiguration = async (id: number, data: { language_name: string; path: string }) => {
+  const response = await fetch(`${API_BASE_URL}/configurations/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update configuration');
+  }
+
+  return response.json();
+};

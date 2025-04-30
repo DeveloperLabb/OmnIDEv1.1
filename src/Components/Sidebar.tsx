@@ -26,6 +26,7 @@ import {
 interface SidebarProps {
   open: boolean;
   onAssignmentClick?: (assignment: AssignmentType) => void;
+  onClose?: () => void; // Add onClose prop
 }
 
 interface AssignmentType {
@@ -40,7 +41,7 @@ interface AssignmentType {
 const drawerWidth = 240;
 const API_BASE_URL = 'http://localhost:8000/api';
 
-const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick, onClose }) => {
   const [assignmentsOpen, setAssignmentsOpen] = useState(false);
   const [assignments, setAssignments] = useState<AssignmentType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,6 +73,21 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick }) => {
 
   const handleAssignmentsClick = () => {
     setAssignmentsOpen(!assignmentsOpen);
+  };
+
+  const handleMenuItemClick = (path: string) => {
+    // Handle navigation here
+    console.log(`Navigating to ${path}`);
+    // Close sidebar after clicking
+    if (onClose) onClose();
+  };
+
+  const handleAssignmentItemClick = (assignment: AssignmentType) => {
+    if (onAssignmentClick) {
+      onAssignmentClick(assignment);
+    }
+    // Close sidebar after clicking
+    if (onClose) onClose();
   };
 
   const menuItems = [
@@ -113,7 +129,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick }) => {
       <ListItemButton 
         key={assignment.assignment_no} 
         sx={{ pl: 4 }}
-        onClick={() => onAssignmentClick && onAssignmentClick(assignment)}
+        onClick={() => handleAssignmentItemClick(assignment)}
       >
         <ListItemIcon>
           <DescriptionIcon />
@@ -130,6 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick }) => {
     <Drawer
       variant="temporary"
       open={open}
+      onClose={onClose} // Close when clicking outside
       sx={{
         width: drawerWidth,
         flexShrink: 0,
@@ -164,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onAssignmentClick }) => {
         {/* Other menu items */}
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton>
+            <ListItemButton onClick={() => handleMenuItemClick(item.path)}>
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
