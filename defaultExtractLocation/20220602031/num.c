@@ -1,6 +1,6 @@
 #include <stdio.h>
 
 int main() {
-    printf("Second c!\n");
+    printf("Second c!");
     return 0;
 }

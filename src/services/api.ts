@@ -5,6 +5,29 @@ interface Assignment {
   correct_output: string;
 }
 
+interface AssignmentResponse {
+  assignment_no: number;
+  assignment_name: string;
+  assignment_date: string;
+  assignment_percent: number;
+  correct_output: string;
+  args: string | null;
+}
+
+interface EvaluationRequest {
+  assignment_no?: number;  // Optional, if not provided will evaluate all assignments
+}
+
+interface EvaluationResult {
+  student_id: number;
+  assignment_no: number;
+  assignment_name?: string;
+  score: number;
+  matched: boolean;
+  student_output?: string;
+  expected_output?: string;
+}
+
 const API_BASE_URL = 'http://localhost:8000/api';
 
 export const createAssignment = async (data: Assignment) => {
@@ -27,6 +50,47 @@ export const createAssignment = async (data: Assignment) => {
     throw new Error(error.detail || 'Failed to create assignment');
   }
 
+  return response.json();
+};
+
+export const evaluateSubmissions = async (request: EvaluationRequest): Promise<EvaluationResult[]> => {
+  const response = await fetch(`${API_BASE_URL}/scores/evaluate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to evaluate submissions');
+  }
+
+  return response.json();
+};
+
+export const getAllAssignments = async (): Promise<AssignmentResponse[]> => {
+  const response = await fetch(`${API_BASE_URL}/assignments/`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch assignments');
+  }
+  
+  return response.json();
+};
+
+export const initTestData = async (): Promise<{ message: string }> => {
+  const response = await fetch(`${API_BASE_URL}/scores/init-test-data`, {
+    method: 'POST'
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to initialize test data');
+  }
+  
   return response.json();
 };
 

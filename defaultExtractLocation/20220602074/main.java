@@ -1,5 +1,6 @@
 public class main {
     public static void main(String[] args) {
-        System.out.println("Hello, World!");
+        // Print exactly "Hello, World!" without trailing newline
+        System.out.print("Hello, World!");
     }
 }

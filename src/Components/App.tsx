@@ -3,6 +3,7 @@ import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import AssignmentDetails from './AssignmentDetails';
 import { Box, Toolbar } from '@mui/material';
+import EvaluationPanel from './EvaluationPanel';
 
 interface AssignmentType {
   assignment_no: number;
@@ -60,11 +61,13 @@ const App = () => {
               <p className="mt-4 text-gray-600">Your next generation IDE</p>
               <p className="mt-2 text-gray-500">Select an assignment from the sidebar to view details</p>
             </div>
+            <div>
+              <EvaluationPanel />
+            </div>
           </div>
         )}
       </Box>
     </Box>
   );
 };
-
 export default App;

@@ -1,39 +1,66 @@
 import subprocess
 import os
 import glob
+import platform
+import sys
+import tempfile
 
 def compile_and_run(file_path):
     # Get the file extension
     _, ext = os.path.splitext(file_path)
 
+    # Get the directory containing the file
+    file_dir = os.path.dirname(file_path)
+    
     if ext == ".c":
-        # C Compilation and Execution
+        # C Compilation and Execution - Windows-friendly
         output_binary = os.path.splitext(file_path)[0]
+        if platform.system() == "Windows":
+            output_binary += ".exe"  # Add .exe extension on Windows
+
         try:
-            subprocess.run(["gcc", file_path, "-o", output_binary], check=True)
+            # Create compiler command
+            compiler_cmd = ["gcc", file_path, "-o", output_binary]
+            compile_process = subprocess.run(compiler_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             print(f"C Compilation successful for {file_path}!")
-            result = subprocess.run([f"./{output_binary}"], check=True, stdout=subprocess.PIPE, text=True)
-            return result.stdout.strip()
+            
+            # Run the compiled binary
+            result = subprocess.run([output_binary], check=True, stdout=subprocess.PIPE, text=True)
+            return result.stdout.strip()  # Using strip() to remove trailing newlines
         except subprocess.CalledProcessError as e:
-            return f"C Error for {file_path}: {e}"
+            err_msg = e.stderr if hasattr(e, 'stderr') and e.stderr else str(e)
+            return f"C Error for {file_path}: {err_msg}"
     elif ext == ".cpp":
-        # C++ Compilation and Execution
+        # C++ Compilation and Execution - Windows-friendly
         output_binary = os.path.splitext(file_path)[0]
+        if platform.system() == "Windows":
+            output_binary += ".exe"  # Add .exe extension on Windows
+            
         try:
-            subprocess.run(["g++", file_path, "-o", output_binary], check=True)
+            compiler_cmd = ["g++", file_path, "-o", output_binary]
+            compile_process = subprocess.run(compiler_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             print(f"C++ Compilation successful for {file_path}!")
-            result = subprocess.run([f"./{output_binary}"], check=True, stdout=subprocess.PIPE, text=True)
-            return result.stdout.strip()
+            result = subprocess.run([output_binary], check=True, stdout=subprocess.PIPE, text=True)
+            return result.stdout.strip()  # Using strip() to remove trailing newlines
         except subprocess.CalledProcessError as e:
-            return f"C++ Error for {file_path}: {e}"
+            err_msg = e.stderr if hasattr(e, 'stderr') and e.stderr else str(e)
+            return f"C++ Error for {file_path}: {err_msg}"
     elif ext == ".java":
         # Java Compilation and Execution
         class_name = os.path.splitext(os.path.basename(file_path))[0]
         try:
-            subprocess.run(["javac", file_path], check=True)
+            # First compile the Java file
+            compile_result = subprocess.run(["javac", file_path], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             print(f"Java Compilation successful for {file_path}!")
-            result = subprocess.run(["java", class_name], check=True, stdout=subprocess.PIPE, text=True)
-            return result.stdout.strip()
+            
+            # Then execute from the directory containing the class file
+            original_dir = os.getcwd()
+            try:
+                os.chdir(file_dir)
+                result = subprocess.run(["java", class_name], check=True, stdout=subprocess.PIPE, text=True)
+                return result.stdout.strip()
+            finally:
+                os.chdir(original_dir)
         except subprocess.CalledProcessError as e:
             return f"Java Error for {file_path}: {e}"
     elif ext == ".cs":
@@ -46,15 +73,25 @@ def compile_and_run(file_path):
         except subprocess.CalledProcessError as e:
             return f"C# Error for {file_path}: {e}"
     elif ext == ".py":
-        # Python Execution
+        # Python Execution - Windows-friendly
         if file_path == "multiple.py":
             return "Skipped execution of multiple.py"
         try:
-            result = subprocess.run(["python3", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            # Use 'python' on Windows and 'python3' on other platforms
+            python_cmd = "python" if platform.system() == "Windows" else "python3"
+            result = subprocess.run([python_cmd, file_path], check=True, stdout=subprocess.PIPE, text=True)
             print(f"Python Execution successful for {file_path}!")
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
             return f"Python Error for {file_path}: {e}"
+        except FileNotFoundError:
+            # If python3 command not found, try python
+            try:
+                result = subprocess.run(["python", file_path], check=True, stdout=subprocess.PIPE, text=True) 
+                print(f"Python Execution successful for {file_path} using python!")
+                return result.stdout.strip()
+            except subprocess.CalledProcessError as e:
+                return f"Python Error for {file_path}: {e}"
     elif ext == ".go":
         # Go Compilation and Execution
         try:
