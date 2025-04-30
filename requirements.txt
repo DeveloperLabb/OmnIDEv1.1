@@ -2,10 +2,11 @@ fastapi==0.104.1
 uvicorn==0.24.0
 python-multipart==0.0.6
 sqlalchemy==2.0.23
-pydantic==2.5.1
+pydantic==2.11.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 aiosqlite==0.19.0
 pytest==7.4.3
 requests==2.31.0
-pandas==1.5.3
+pandas==2.2.3
+matplotlib==3.8.4
