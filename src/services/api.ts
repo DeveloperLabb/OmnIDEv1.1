@@ -232,3 +232,14 @@ export const getAssignmentScores = async () => {
   
   return response.json();
 };
+
+export const getStudentScores = async () => {
+  const response = await fetch(`${API_BASE_URL}/scores/students`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch student scores');
+  }
+  
+  return response.json();
+};

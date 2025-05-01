@@ -35,8 +35,9 @@ class ScoreController:
         self.router.add_api_route("/{assignment_no}/{student_id}", self.get_score, methods=["GET"], response_model=ScoreResponse)
         self.router.add_api_route("/student/{student_id}", self.get_student_scores, methods=["GET"], response_model=List[ScoreResponse])
         self.router.add_api_route("/evaluate", self.evaluate_submissions, methods=["POST"], response_model=List[EvaluationResult])
-        self.router.add_api_route("/init-test-data", self.init_test_data, methods=["POST"])
+        # Add new routes
         self.router.add_api_route("/assignments", self.get_assignment_scores, methods=["GET"])
+        self.router.add_api_route("/students", self.get_student_scores, methods=["GET"])
 
     async def create_score(self, score: ScoreCreate, db: Session = Depends(get_db)) -> Score:
         db_score = Score(
@@ -65,8 +66,60 @@ class ScoreController:
             )
         return db_score
 
-    async def get_student_scores(self, student_id: int, db: Session = Depends(get_db)) -> List[Score]:
-        return db.query(Score).filter(Score.student_id == student_id).all()
+    async def get_student_scores(self, db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
+        """Get scores grouped by student with statistics"""
+        
+        # Get all scores
+        scores = db.query(Score).all()
+        
+        # Group by student
+        student_groups = {}
+        for score in scores:
+            if score.student_id not in student_groups:
+                student_groups[score.student_id] = []
+            student_groups[score.student_id].append(score)
+        
+        # Get all assignments for looking up assignment details
+        assignments = {a.assignment_no: a for a in db.query(Assignment).all()}
+        
+        results = []
+        
+        for student_id, student_scores in student_groups.items():
+            # Compile assignment details
+            assignment_details = []
+            total_score = 0
+            total_weighted_score = 0
+            total_weight = 0
+            
+            for score in student_scores:
+                assignment = assignments.get(score.assignment_no)
+                
+                if assignment:
+                    # Calculate weighted score for this assignment
+                    weighted_score = (score.score * assignment.assignment_percent) / 100
+                    total_score += score.score
+                    total_weighted_score += weighted_score
+                    total_weight += assignment.assignment_percent
+                    
+                    assignment_details.append({
+                        "assignment_no": assignment.assignment_no,
+                        "assignment_name": assignment.assignment_name,
+                        "assignment_percent": assignment.assignment_percent,
+                        "score": score.score
+                    })
+            
+            average_score = total_score / len(student_scores) if student_scores else 0
+            
+            # Add result
+            results.append({
+                "student_id": student_id,
+                "assignment_count": len(student_scores),
+                "average_score": average_score,
+                "total_weighted_score": total_weighted_score,
+                "assignments": assignment_details
+            })
+        
+        return results
         
     async def evaluate_submissions(self, request: EvaluationRequest, db: Session = Depends(get_db)) -> List[EvaluationResult]:
         evaluation_service = EvaluationService(db)

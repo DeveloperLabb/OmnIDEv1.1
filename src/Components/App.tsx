@@ -5,6 +5,7 @@ import AssignmentDetails from './AssignmentDetails';
 import { Box, Toolbar, Fade } from '@mui/material';
 import EvaluationPanel from './EvaluationPanel';
 import AssignmentScores from './AssignmentScores';
+import StudentScores from './StudentScores';
 import { getAllAssignments } from '../services/api';
 
 interface AssignmentType {
@@ -122,6 +123,8 @@ const App = () => {
         
         {currentView === 'scores' ? (
           <AssignmentScores />
+        ) : currentView === 'student-reports' ? (
+          <StudentScores />
         ) : selectedAssignment ? (
           <Fade in={true} timeout={500}>
             <div>

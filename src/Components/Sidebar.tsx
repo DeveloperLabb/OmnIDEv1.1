@@ -20,7 +20,8 @@ import {
   ExpandLess,
   ExpandMore,
   Description as DescriptionIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  People as PeopleIcon // Added People icon for Student Reports
 } from '@mui/icons-material';
 
 interface SidebarProps {
@@ -47,7 +48,7 @@ const drawerWidth = 240;
 const Sidebar: React.FC<SidebarProps> = ({ 
   open, 
   onAssignmentClick, 
-  onMenuItemClick, // Add this prop
+  onMenuItemClick, 
   onClose, 
   transitionDuration = 200,
   assignments: externalAssignments,
@@ -115,7 +116,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const menuItems = [
-    { text: 'Assignment Reports', icon: <ScoreIcon />, path: 'scores' }, // Changed from 'Scores' to 'Assignment Reports'
+    { text: 'Assignment Reports', icon: <ScoreIcon />, path: 'scores' },
+    { text: 'Student Reports', icon: <PeopleIcon />, path: 'student-reports' }, // Added new menu item
     { text: 'Reports', icon: <ReportIcon />, path: 'reports' },
     { text: 'Files', icon: <FolderIcon />, path: 'files' },
     { text: 'Settings', icon: <SettingsIcon />, path: 'settings' },
