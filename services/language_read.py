@@ -5,7 +5,14 @@ import platform
 import sys
 import tempfile
 
-def compile_and_run(file_path):
+# Update the compile_and_run function to accept command line arguments
+def compile_and_run(file_path, args=None):
+    if args is None:
+        args = []
+    
+    # Convert all arguments to strings to be safe
+    args = [str(arg) for arg in args]
+    
     # Get the file extension
     _, ext = os.path.splitext(file_path)
 
@@ -24,8 +31,8 @@ def compile_and_run(file_path):
             compile_process = subprocess.run(compiler_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             print(f"C Compilation successful for {file_path}!")
             
-            # Run the compiled binary
-            result = subprocess.run([output_binary], check=True, stdout=subprocess.PIPE, text=True)
+            # Run the compiled binary with arguments
+            result = subprocess.run([output_binary] + args, check=True, stdout=subprocess.PIPE, text=True)
             return result.stdout.strip()  # Using strip() to remove trailing newlines
         except subprocess.CalledProcessError as e:
             err_msg = e.stderr if hasattr(e, 'stderr') and e.stderr else str(e)
@@ -40,7 +47,7 @@ def compile_and_run(file_path):
             compiler_cmd = ["g++", file_path, "-o", output_binary]
             compile_process = subprocess.run(compiler_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             print(f"C++ Compilation successful for {file_path}!")
-            result = subprocess.run([output_binary], check=True, stdout=subprocess.PIPE, text=True)
+            result = subprocess.run([output_binary] + args, check=True, stdout=subprocess.PIPE, text=True)
             return result.stdout.strip()  # Using strip() to remove trailing newlines
         except subprocess.CalledProcessError as e:
             err_msg = e.stderr if hasattr(e, 'stderr') and e.stderr else str(e)
@@ -57,7 +64,7 @@ def compile_and_run(file_path):
             original_dir = os.getcwd()
             try:
                 os.chdir(file_dir)
-                result = subprocess.run(["java", class_name], check=True, stdout=subprocess.PIPE, text=True)
+                result = subprocess.run(["java", class_name] + args, check=True, stdout=subprocess.PIPE, text=True)
                 return result.stdout.strip()
             finally:
                 os.chdir(original_dir)
@@ -67,7 +74,7 @@ def compile_and_run(file_path):
         # C# Compilation and Execution using dotnet
         try:
             # Directly run the C# file using dotnet
-            result = subprocess.run(["dotnet", "run", "--source", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            result = subprocess.run(["dotnet", "run", "--source", file_path] + args, check=True, stdout=subprocess.PIPE, text=True)
             print(f"C# Execution successful for {file_path}!")
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
@@ -79,7 +86,7 @@ def compile_and_run(file_path):
         try:
             # Use 'python' on Windows and 'python3' on other platforms
             python_cmd = "python" if platform.system() == "Windows" else "python3"
-            result = subprocess.run([python_cmd, file_path], check=True, stdout=subprocess.PIPE, text=True)
+            result = subprocess.run([python_cmd, file_path] + args, check=True, stdout=subprocess.PIPE, text=True)
             print(f"Python Execution successful for {file_path}!")
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
@@ -87,7 +94,7 @@ def compile_and_run(file_path):
         except FileNotFoundError:
             # If python3 command not found, try python
             try:
-                result = subprocess.run(["python", file_path], check=True, stdout=subprocess.PIPE, text=True) 
+                result = subprocess.run(["python", file_path] + args, check=True, stdout=subprocess.PIPE, text=True) 
                 print(f"Python Execution successful for {file_path} using python!")
                 return result.stdout.strip()
             except subprocess.CalledProcessError as e:
@@ -96,7 +103,7 @@ def compile_and_run(file_path):
         # Go Compilation and Execution
         try:
             # Directly run the Go file
-            result = subprocess.run(["go", "run", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            result = subprocess.run(["go", "run", file_path] + args, check=True, stdout=subprocess.PIPE, text=True)
             print(f"Go Execution successful for {file_path}!")
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
@@ -104,7 +111,7 @@ def compile_and_run(file_path):
     elif ext == ".js":
         # JavaScript Execution
         try:
-            result = subprocess.run(["node", file_path], check=True, stdout=subprocess.PIPE, text=True)
+            result = subprocess.run(["node", file_path] + args, check=True, stdout=subprocess.PIPE, text=True)
             print(f"JavaScript Execution successful for {file_path}!")
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:

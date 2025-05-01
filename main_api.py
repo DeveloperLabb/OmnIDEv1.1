@@ -14,7 +14,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="OmnIDE API")
 
-# reset_database();
+reset_database();
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,

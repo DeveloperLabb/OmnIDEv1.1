@@ -126,7 +126,7 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCr
   const handleSubmitAssignment = async (data) => {
     try {
       setIsSubmitting(true);
-      await createAssignment(data);
+      const result = await createAssignment(data); // Make sure this returns the assignment object
       handleCloseAssignmentModal();
       
       // Refresh assignments list after creating a new one
@@ -135,9 +135,11 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCr
       }
       
       showSnackbar('Assignment created successfully', 'success');
+      return result; // Important: Return the created assignment object
     } catch (error) {
       console.error('Failed to create assignment:', error);
       showSnackbar(`Failed to create assignment: ${error.message}`, 'error');
+      throw error; // Re-throw to be caught in AssignmentModal
     } finally {
       setIsSubmitting(false);
     }

@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -18,6 +18,23 @@ function startUvicornServer() {
     console.error(`Uvicorn Error: ${data}`);
   });
 }
+
+ipcMain.handle('dialog:openFile', async (event, options) => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: options?.filters || []
+  });
+  if (canceled) return null;
+  return filePaths[0];
+});
+
+ipcMain.handle('dialog:openDirectory', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  if (canceled) return null;
+  return filePaths[0];
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({

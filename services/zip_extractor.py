@@ -34,13 +34,16 @@ class ZipExtractor:
         print(f"Found zip files: {zip_files}") 
         return zip_files
 
-    def extract_zip(self, zip_path: Path) -> bool:
-       
+    # Update the extract_zip method to accept either a Path object or a string
+    def extract_zip(self, zip_path) -> bool:
         try:
-            print(f"Extracting to: {self.dst_dir}")  # Debug için
+            # Convert string to Path if needed
+            if isinstance(zip_path, str):
+                zip_path = Path(self.src_dir) / zip_path
+            
+            print(f"Extracting {zip_path} to: {self.dst_dir}")
 
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                
                 files_to_extract = [f for f in zip_ref.namelist() 
                                   if not f.startswith('__MACOSX') 
                                   and not f.startswith('._')]

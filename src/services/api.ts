@@ -29,6 +29,12 @@ interface EvaluationResult {
   expected_output?: string;
 }
 
+interface ZipExtractionRequest {
+  instructor_zip_path: string;
+  student_submissions_path: string;
+  assignment_name: string;
+}
+
 const API_BASE_URL = 'http://localhost:8000/api';
 
 export const createAssignment = async (data: Assignment) => {
@@ -197,4 +203,21 @@ export const exportData = async (): Promise<Blob> => {
   }
   
   return response.blob();
+};
+
+export const extractZipFiles = async (assignmentNo: number, data: ZipExtractionRequest): Promise<{ message: string }> => {
+  const response = await fetch(`${API_BASE_URL}/assignments/${assignmentNo}/extract-zip`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to extract ZIP files');
+  }
+
+  return response.json();
 };
