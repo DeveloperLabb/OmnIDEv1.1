@@ -11,10 +11,16 @@ import {
 import CodeIcon from '@mui/icons-material/Code';
 import FolderZipIcon from '@mui/icons-material/FolderZip';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 import CodeEditor from './CodeEditor';
 import ZipExtractor from './ZipExtractor';
-
+import BatchProcessor from './BatchProcessor';
+import AssignmentsList from './AssignmentList';
+import ScoringReport from './ScoringReport';
+import LanguageConfiguration from './LanguageConfiguration';
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -62,6 +68,9 @@ const Dashboard: React.FC = () => {
             <Tab icon={<CodeIcon />} label="Code Editor" />
             <Tab icon={<FolderZipIcon />} label="ZIP Extractor" />
             <Tab icon={<FormatListNumberedIcon />} label="Assignments" />
+            <Tab icon={<AssignmentIcon />} label="Batch Processor" />
+            <Tab icon={<AssessmentIcon />} label="Scoring Report" />
+            <Tab icon={<SettingsIcon />} label="Configurations" />
           </Tabs>
         </Box>
         
@@ -80,13 +89,29 @@ const Dashboard: React.FC = () => {
         <TabPanel value={tabValue} index={2}>
           <Typography variant="h5" sx={{ mb: 2 }}>Assignments</Typography>
           <Divider sx={{ mb: 2 }} />
-          <Typography variant="body1">
-            Assignments tab content will go here.
-          </Typography>
+          <AssignmentsList />
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={3}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Assignment Batch Processor</Typography>
+          <Divider sx={{ mb: 2 }} />
+          <BatchProcessor />
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={4}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Scoring Reports</Typography>
+          <Divider sx={{ mb: 2 }} />
+          <ScoringReport />
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={5}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Language Configurations</Typography>
+          <Divider sx={{ mb: 2 }} />
+          <LanguageConfiguration />
         </TabPanel>
       </Paper>
     </Container>
   );
 };
 
-export default Dashboard; // Make sure this line is present
+export default Dashboard;

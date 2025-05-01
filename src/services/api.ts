@@ -48,6 +48,24 @@ export interface ExtractZipResponse {
   files: string[];
 }
 
+export interface BatchProcessRequest {
+  assignment_no: number;
+  expected_output: string;
+  files: File[];
+}
+
+export interface ProcessResult {
+  studentId: string;
+  status: 'success' | 'failure' | 'error';
+  message: string;
+  output?: string;
+}
+
+export interface BatchProcessResponse {
+  success: boolean;
+  results: ProcessResult[];
+}
+
 // Assignment functions
 export const createAssignment = async (data: AssignmentData) => {
   const response = await axios.post(`${API_URL}/assignments/`, data);
@@ -115,5 +133,26 @@ export const getFileContent = async (path: string): Promise<string> => {
   const response = await axios.get(`${API_URL}/code/file?path=${encodeURIComponent(path)}`, {
     responseType: 'text'
   });
+  return response.data;
+};
+
+// Batch processing function
+export const batchProcessSubmissions = async (data: BatchProcessRequest): Promise<BatchProcessResponse> => {
+  // Create a FormData object to handle the files
+  const formData = new FormData();
+  formData.append('assignment_no', data.assignment_no.toString());
+  formData.append('expected_output', data.expected_output);
+  
+  // Append all files to the FormData
+  data.files.forEach((file, index) => {
+    formData.append('files', file);
+  });
+  
+  const response = await axios.post(`${API_URL}/code/batch-process`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  
   return response.data;
 };

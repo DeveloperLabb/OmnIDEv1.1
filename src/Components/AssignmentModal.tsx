@@ -22,6 +22,7 @@ interface AssignmentData {
   assignment_date: string;
   assignment_percent: number;
   correct_output: string;
+  args?: string;
 }
 
 const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubmit }) => {
@@ -29,7 +30,8 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
     assignment_name: '',
     assignment_date: new Date().toISOString().split('T')[0],
     assignment_percent: 0,
-    correct_output: ''
+    correct_output: '',
+    args: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -39,7 +41,8 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
       assignment_name: '',
       assignment_date: new Date().toISOString().split('T')[0],
       assignment_percent: 0,
-      correct_output: ''
+      correct_output: '',
+      args: ''
     });
   };
 
@@ -80,6 +83,14 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
               required
               fullWidth
               inputProps={{ min: 0, max: 100 }}
+            />
+
+            <TextField
+              label="Command Line Arguments (Optional)"
+              value={formData.args || ''}
+              onChange={(e) => setFormData({ ...formData, args: e.target.value })}
+              fullWidth
+              helperText="Enter command line arguments separated by spaces"
             />
 
             <TextField
