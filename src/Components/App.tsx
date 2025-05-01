@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import AssignmentDetails from './AssignmentDetails';
 import { Box, Toolbar, Fade } from '@mui/material';
 import EvaluationPanel from './EvaluationPanel';
+import AssignmentScores from './AssignmentScores';
 import { getAllAssignments } from '../services/api';
 
 interface AssignmentType {
@@ -20,6 +21,7 @@ const App = () => {
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentType | null>(null);
   const [assignments, setAssignments] = useState<AssignmentType[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [currentView, setCurrentView] = useState('home');
 
   // Fetch all assignments
   useEffect(() => {
@@ -58,11 +60,13 @@ const App = () => {
   };
 
   const goToHome = () => {
+    setCurrentView('home');
     setSelectedAssignment(null);
   };
 
   const handleAssignmentClick = (assignment: AssignmentType) => {
     setSelectedAssignment(assignment);
+    setCurrentView('details');
     // On mobile, close the sidebar after selection
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -82,6 +86,15 @@ const App = () => {
     refreshAssignments();
   }, [refreshAssignments]);
 
+  const handleMenuItemClick = (path: string) => {
+    setCurrentView(path);
+    setSelectedAssignment(null);
+    // On mobile, close the sidebar after selection
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex' }}>
       <Navbar 
@@ -91,7 +104,8 @@ const App = () => {
       />
       <Sidebar 
         open={sidebarOpen} 
-        onAssignmentClick={handleAssignmentClick} 
+        onAssignmentClick={handleAssignmentClick}
+        onMenuItemClick={handleMenuItemClick}
         onClose={closeSidebar}
         assignments={assignments}
         refreshAssignments={refreshAssignments}
@@ -106,7 +120,9 @@ const App = () => {
       >
         <Toolbar /> {/* Provides spacing below AppBar */}
         
-        {selectedAssignment ? (
+        {currentView === 'scores' ? (
+          <AssignmentScores />
+        ) : selectedAssignment ? (
           <Fade in={true} timeout={500}>
             <div>
               <AssignmentDetails 
@@ -118,10 +134,8 @@ const App = () => {
           </Fade>
         ) : (
           <Fade in={true} timeout={500}>
-            <div className="flex items-center justify-center h-[calc(100vh-64px)]">
-              <div>
-                <EvaluationPanel />
-              </div>
+            <div>
+              <EvaluationPanel />
             </div>
           </Fade>
         )}

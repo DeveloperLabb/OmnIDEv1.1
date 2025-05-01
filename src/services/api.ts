@@ -221,3 +221,14 @@ export const extractZipFiles = async (assignmentNo: number, data: ZipExtractionR
 
   return response.json();
 };
+
+export const getAssignmentScores = async () => {
+  const response = await fetch(`${API_BASE_URL}/scores/assignments`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch assignment scores');
+  }
+  
+  return response.json();
+};

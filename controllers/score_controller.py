@@ -1,6 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from models.assignment_model import Assignment
 from models.score_model import Score, ScoreResponse
 from database.database import get_db
 from pydantic import BaseModel
@@ -35,6 +36,7 @@ class ScoreController:
         self.router.add_api_route("/student/{student_id}", self.get_student_scores, methods=["GET"], response_model=List[ScoreResponse])
         self.router.add_api_route("/evaluate", self.evaluate_submissions, methods=["POST"], response_model=List[EvaluationResult])
         self.router.add_api_route("/init-test-data", self.init_test_data, methods=["POST"])
+        self.router.add_api_route("/assignments", self.get_assignment_scores, methods=["GET"])
 
     async def create_score(self, score: ScoreCreate, db: Session = Depends(get_db)) -> Score:
         db_score = Score(
@@ -84,3 +86,38 @@ class ScoreController:
         from database.init_test_data import init_test_data
         init_test_data()
         return {"message": "Test data initialized successfully"}
+
+    async def get_assignment_scores(self, db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
+        """Get scores grouped by assignment with statistics"""
+        
+        # Get all assignments
+        assignments = db.query(Assignment).all()
+        
+        results = []
+        
+        for assignment in assignments:
+            # Get all scores for this assignment
+            scores = db.query(Score).filter(Score.assignment_no == assignment.assignment_no).all()
+            
+            # Skip if no scores
+            if not scores:
+                continue
+                
+            # Calculate average score
+            total_score = sum(score.score for score in scores)
+            student_count = len(scores)
+            average_score = total_score / student_count if student_count > 0 else 0
+            
+            # Format student records
+            student_records = [{"student_id": score.student_id, "score": score.score} for score in scores]
+            
+            # Add result
+            results.append({
+                "assignment_no": assignment.assignment_no,
+                "assignment_name": assignment.assignment_name,
+                "student_count": student_count,
+                "average_score": average_score,
+                "students": student_records
+            })
+        
+        return results

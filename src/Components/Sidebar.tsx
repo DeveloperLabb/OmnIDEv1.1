@@ -26,6 +26,7 @@ import {
 interface SidebarProps {
   open: boolean;
   onAssignmentClick?: (assignment: AssignmentType) => void;
+  onMenuItemClick?: (path: string) => void; // Add this prop
   onClose?: () => void;
   transitionDuration?: number;
   assignments?: AssignmentType[];
@@ -46,6 +47,7 @@ const drawerWidth = 240;
 const Sidebar: React.FC<SidebarProps> = ({ 
   open, 
   onAssignmentClick, 
+  onMenuItemClick, // Add this prop
   onClose, 
   transitionDuration = 200,
   assignments: externalAssignments,
@@ -97,8 +99,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleMenuItemClick = (path: string) => {
-    // Handle navigation here
-    console.log(`Navigating to ${path}`);
+    if (onMenuItemClick) {
+      onMenuItemClick(path);
+    }
     // Close sidebar after clicking
     if (onClose) onClose();
   };
@@ -112,10 +115,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const menuItems = [
-    { text: 'Scores', icon: <ScoreIcon />, path: '/scores' },
-    { text: 'Reports', icon: <ReportIcon />, path: '/reports' },
-    { text: 'Files', icon: <FolderIcon />, path: '/files' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+    { text: 'Assignment Reports', icon: <ScoreIcon />, path: 'scores' }, // Changed from 'Scores' to 'Assignment Reports'
+    { text: 'Reports', icon: <ReportIcon />, path: 'reports' },
+    { text: 'Files', icon: <FolderIcon />, path: 'files' },
+    { text: 'Settings', icon: <SettingsIcon />, path: 'settings' },
   ];
 
   const renderAssignmentsList = () => {
