@@ -6,7 +6,6 @@ import {
   Paper, 
   CircularProgress,
   Alert,
-  Divider,
   TextField,
   FormControl,
   InputLabel,
@@ -24,15 +23,17 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
-  IconButton
+  IconButton,
+  Snackbar,
+  SelectChangeEvent
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import FolderIcon from '@mui/icons-material/Folder';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CloseIcon from '@mui/icons-material/Close';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { 
@@ -40,8 +41,7 @@ import {
   extractZip, 
   runCode, 
   getFileContent,
-  createScore,
-  batchProcessSubmissions
+  createScore
 } from '../services/api';
 import CodeEditor from './CodeEditor';
 
@@ -66,6 +66,7 @@ const BatchProcessor: React.FC = () => {
   // State for assignment selection
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [loadingAssignments, setLoadingAssignments] = useState<boolean>(false);
   
   // State for reference solution
   const [referenceSolution, setReferenceSolution] = useState<File | null>(null);
@@ -74,8 +75,7 @@ const BatchProcessor: React.FC = () => {
   const [referenceOutput, setReferenceOutput] = useState('');
   
   // State for student submissions
-  const [submissionFolder, setSubmissionFolder] = useState<string | null>(null);
-  const [isSelectingFolder, setIsSelectingFolder] = useState(false);
+  const [submissionFolder, setSubmissionFolder] = useState<string>('');
   const [studentZipFiles, setStudentZipFiles] = useState<File[]>([]);
   
   // State for processing
@@ -90,28 +90,42 @@ const BatchProcessor: React.FC = () => {
   const [viewCodeDialogOpen, setViewCodeDialogOpen] = useState(false);
   const [selectedStudentCode, setSelectedStudentCode] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [refreshSnackbarOpen, setRefreshSnackbarOpen] = useState(false);
   
   // Refs
   const solutionFileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch assignments on component mount
+  // Fetch assignments on component mount and when refreshed
   useEffect(() => {
-    const fetchAssignments = async () => {
-      try {
-        const assignmentData = await getAllAssignments();
-        setAssignments(assignmentData);
-      } catch (error) {
-        console.error('Error fetching assignments:', error);
-        setError('Failed to fetch assignments');
-      }
-    };
-
     fetchAssignments();
   }, []);
 
+  const fetchAssignments = async () => {
+    try {
+      setLoadingAssignments(true);
+      setError(null);
+      
+      const assignmentData = await getAllAssignments();
+      
+      if (Array.isArray(assignmentData) && assignmentData.length > 0) {
+        setAssignments(assignmentData);
+        setRefreshSnackbarOpen(true);
+        console.log("Assignments loaded:", assignmentData);
+      } else {
+        console.warn("No assignments found or invalid data returned:", assignmentData);
+        setError("No assignments found. Please create an assignment first.");
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      setError('Failed to fetch assignments. Please check the server connection.');
+    } finally {
+      setLoadingAssignments(false);
+    }
+  };
+
   // Handle assignment selection
-  const handleAssignmentChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleAssignmentChange = (event: SelectChangeEvent<number>) => {
     const assignmentNo = Number(event.target.value);
     const assignment = assignments.find(a => a.assignment_no === assignmentNo) || null;
     setSelectedAssignment(assignment);
@@ -120,6 +134,11 @@ const BatchProcessor: React.FC = () => {
     setReferenceSolution(null);
     setReferenceCode('');
     setReferenceOutput('');
+    
+    // If assignment has correct output, use it
+    if (assignment && assignment.correct_output) {
+      setReferenceOutput(assignment.correct_output);
+    }
   };
 
   // Handle reference solution upload
@@ -129,7 +148,7 @@ const BatchProcessor: React.FC = () => {
     }
   };
 
-  const handleReferenceSolutionChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReferenceSolutionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
       setReferenceSolution(file);
@@ -166,6 +185,8 @@ const BatchProcessor: React.FC = () => {
     
     try {
       setProcessStatus('Running reference solution...');
+      setIsProcessing(true);
+      
       const response = await runCode({
         code: referenceCode,
         language: referenceLanguage,
@@ -189,6 +210,7 @@ const BatchProcessor: React.FC = () => {
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
+      setIsProcessing(false);
       setProcessStatus('');
     }
   };
@@ -274,7 +296,7 @@ const BatchProcessor: React.FC = () => {
             'assignment.c', 'assignment.cpp', 'assignment.java', 'assignment.py'
           ];
           
-          let mainFile = null;
+          let mainFile: string | null = null;
           for (const pattern of mainFilePatterns) {
             if (extractResult.files.includes(pattern)) {
               mainFile = pattern;
@@ -323,11 +345,15 @@ const BatchProcessor: React.FC = () => {
             });
             
             // Save the failure to the database
-            await createScore({
-              assignment_no: selectedAssignment.assignment_no,
-              student_id: parseInt(studentId),
-              score: 0
-            });
+            try {
+              await createScore({
+                assignment_no: selectedAssignment.assignment_no,
+                student_id: parseInt(studentId),
+                score: 0
+              });
+            } catch (scoreError) {
+              console.error(`Error saving score for student ${studentId}:`, scoreError);
+            }
             
             continue;
           }
@@ -346,11 +372,15 @@ const BatchProcessor: React.FC = () => {
             });
             
             // Save the success to the database
-            await createScore({
-              assignment_no: selectedAssignment.assignment_no,
-              student_id: parseInt(studentId),
-              score: selectedAssignment.assignment_percent
-            });
+            try {
+              await createScore({
+                assignment_no: selectedAssignment.assignment_no,
+                student_id: parseInt(studentId),
+                score: selectedAssignment.assignment_percent
+              });
+            } catch (scoreError) {
+              console.error(`Error saving score for student ${studentId}:`, scoreError);
+            }
           } else {
             newResults.push({
               studentId,
@@ -361,11 +391,15 @@ const BatchProcessor: React.FC = () => {
             });
             
             // Save the failure to the database
-            await createScore({
-              assignment_no: selectedAssignment.assignment_no,
-              student_id: parseInt(studentId),
-              score: 0
-            });
+            try {
+              await createScore({
+                assignment_no: selectedAssignment.assignment_no,
+                student_id: parseInt(studentId),
+                score: 0
+              });
+            } catch (scoreError) {
+              console.error(`Error saving score for student ${studentId}:`, scoreError);
+            }
           }
           
         } catch (error) {
@@ -417,7 +451,7 @@ const BatchProcessor: React.FC = () => {
         'assignment.c', 'assignment.cpp', 'assignment.java', 'assignment.py'
       ];
       
-      let mainFile = null;
+      let mainFile: string | null = null;
       for (const pattern of mainFilePatterns) {
         if (extractResult.files.includes(pattern)) {
           mainFile = pattern;
@@ -452,9 +486,20 @@ const BatchProcessor: React.FC = () => {
   return (
     <Box sx={{ width: '100%', mt: 2 }}>
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Batch Assignment Processor
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
+            Batch Assignment Processor
+          </Typography>
+          <Button 
+            variant="outlined"
+            color="primary"
+            startIcon={<RefreshIcon />}
+            onClick={fetchAssignments}
+            disabled={loadingAssignments}
+          >
+            {loadingAssignments ? <CircularProgress size={24} /> : 'Refresh Assignments'}
+          </Button>
+        </Box>
         
         <Stepper activeStep={currentStep} sx={{ mb: 4 }}>
           {steps.map((label, index) => (
@@ -479,6 +524,7 @@ const BatchProcessor: React.FC = () => {
                 value={selectedAssignment ? selectedAssignment.assignment_no : ''}
                 label="Assignment"
                 onChange={handleAssignmentChange}
+                disabled={loadingAssignments || assignments.length === 0}
               >
                 {assignments.map((assignment) => (
                   <MenuItem key={assignment.assignment_no} value={assignment.assignment_no}>
@@ -570,8 +616,9 @@ const BatchProcessor: React.FC = () => {
                   onClick={handleRunReferenceSolution}
                   startIcon={<PlayArrowIcon />}
                   sx={{ mb: 2 }}
+                  disabled={isProcessing}
                 >
-                  Run Reference Solution
+                  {isProcessing ? <CircularProgress size={24} color="inherit" /> : 'Run Reference Solution'}
                 </Button>
                 
                 {referenceOutput && (
@@ -645,8 +692,7 @@ const BatchProcessor: React.FC = () => {
                 type="file"
                 ref={folderInputRef}
                 onChange={handleFolderSelectChange}
-                webkitdirectory="true"
-                directory="true"
+                // Using attribute to allow directory selection in browsers
                 multiple
                 style={{ display: 'none' }}
               />
@@ -693,18 +739,13 @@ const BatchProcessor: React.FC = () => {
               <Button
                 variant="contained"
                 color="primary"
-                startIcon={<PlayArrowIcon />}
+                startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
                 onClick={processStudentSubmissions}
                 disabled={isProcessing}
                 fullWidth
                 sx={{ mb: 2, py: 1 }}
               >
-                {isProcessing ? (
-                  <>
-                    <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-                    Processing...
-                  </>
-                ) : 'Process Student Submissions'}
+                {isProcessing ? 'Processing...' : 'Process Student Submissions'}
               </Button>
               
               {processStatus && (
@@ -778,8 +819,10 @@ const BatchProcessor: React.FC = () => {
                   setReferenceCode('');
                   setReferenceOutput('');
                   setStudentZipFiles([]);
-                  setSubmissionFolder(null);
+                  setSubmissionFolder('');
                   setResults([]);
+                  // Refresh assignments after processing
+                  fetchAssignments();
                 }}
                 disabled={isProcessing || results.length === 0}
               >
@@ -835,6 +878,24 @@ const BatchProcessor: React.FC = () => {
           </Box>
         </DialogContent>
       </Dialog>
+
+      {/* Refresh Snackbar */}
+      <Snackbar
+        open={refreshSnackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setRefreshSnackbarOpen(false)}
+        message={`Successfully loaded ${assignments.length} assignments`}
+        action={
+          <IconButton
+            size="small"
+            aria-label="close"
+            color="inherit"
+            onClick={() => setRefreshSnackbarOpen(false)}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      />
     </Box>
   );
 };
