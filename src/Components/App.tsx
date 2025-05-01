@@ -26,13 +26,19 @@ const App = () => {
     const fetchAssignments = async () => {
       try {
         const data = await getAllAssignments();
-        setAssignments(data);
+        setAssignments(data.map(assignment => ({
+          ...assignment,
+          args: assignment.args ?? undefined,
+        })));
         
         // Update selected assignment with fresh data if one is selected
         if (selectedAssignment) {
           const updated = data.find(a => a.assignment_no === selectedAssignment.assignment_no);
           if (updated) {
-            setSelectedAssignment(updated);
+            setSelectedAssignment({
+              ...updated,
+              args: updated.args ?? undefined,
+            });
           }
         }
       } catch (error) {
