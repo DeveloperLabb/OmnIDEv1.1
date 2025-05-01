@@ -4,7 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from controllers.assignment_controller import AssignmentController
 from controllers.score_controller import ScoreController
 from controllers.report_controller import ReportController
-from controllers.configuration_controller import ConfigurationController  # Add this line
+from controllers.configuration_controller import ConfigurationController
+from controllers.application_feature_controller import ApplicationFeatureController
+
 from database.database import Base, engine, reset_database
 
 # Create database tables
@@ -26,19 +28,21 @@ app.add_middleware(
 @app.get("/")
 @app.head("/")
 async def root():
-    return {"status": "ok"}
+    return {"message": "OmnIDE API is running"}
 
 # Initialize controllers
 assignment_controller = AssignmentController()
 score_controller = ScoreController()
 report_controller = ReportController()
-configuration_controller = ConfigurationController()  # Add this line
+configuration_controller = ConfigurationController()
+application_feature_controller = ApplicationFeatureController()
 
 # Include routers with prefix
 app.include_router(assignment_controller.router, prefix="/api")
 app.include_router(score_controller.router, prefix="/api")
 app.include_router(report_controller.router, prefix="/api")
-app.include_router(configuration_controller.router, prefix="/api")  # Add this line
+app.include_router(configuration_controller.router, prefix="/api")
+app.include_router(application_feature_controller.router, prefix="/api")
 
 if __name__ == "__main__":
     uvicorn.run("main_api:app", host="127.0.0.1", port=8000, reload=True)

@@ -166,3 +166,35 @@ export const deleteAssignment = async (assignmentNo: number): Promise<{ message:
 
   return response.json();
 };
+
+// Import data from a file
+export const importData = async (file: File): Promise<{ message: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await fetch(`${API_BASE_URL}/features/import`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to import data');
+  }
+  
+  return response.json();
+};
+
+// Export data as a JSON file
+export const exportData = async (): Promise<Blob> => {
+  const response = await fetch(`${API_BASE_URL}/features/export`, {
+    method: 'GET',
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to export data');
+  }
+  
+  return response.blob();
+};
