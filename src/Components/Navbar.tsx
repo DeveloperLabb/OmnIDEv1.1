@@ -23,6 +23,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import AssignmentModal from './AssignmentModal';
 import ConfigurationModal from './ConfigurationModal';
+import UserManualModal from './UserManualModal';
 import { createAssignment, importData, exportData } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -36,6 +37,7 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCr
   const { darkMode, toggleDarkMode } = useTheme();
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [userManualOpen, setUserManualOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
   const settingsMenuOpen = Boolean(settingsAnchorEl);
@@ -49,6 +51,11 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCr
   const handleCloseAssignmentModal = () => setAssignmentModalOpen(false);
   const handleOpenConfigModal = () => setConfigModalOpen(true);
   const handleCloseConfigModal = () => setConfigModalOpen(false);
+  const handleUserManualOpen = () => {
+    setUserManualOpen(true);
+    handleSettingsClose();
+  };
+  const handleUserManualClose = () => setUserManualOpen(false);
   const handleLogoClick = () => goToHome && goToHome();
   const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => setSettingsAnchorEl(event.currentTarget);
   const handleSettingsClose = () => setSettingsAnchorEl(null);
@@ -207,7 +214,7 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCr
               <FileDownloadIcon fontSize="small" sx={{ mr: 1 }} />
               Export
             </MenuItem>
-            <MenuItem onClick={handleSettingsClose}>
+            <MenuItem onClick={handleUserManualOpen}>
               <HelpOutlineIcon fontSize="small" sx={{ mr: 1 }} />
               User Manual
             </MenuItem>
@@ -223,6 +230,10 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCr
         open={configModalOpen}
         onClose={handleCloseConfigModal}
         onSubmit={handleSubmitConfiguration}
+      />
+      <UserManualModal
+        open={userManualOpen}
+        onClose={handleUserManualClose}
       />
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
