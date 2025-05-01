@@ -27,6 +27,8 @@ interface AssignmentData {
   assignment_date: string;
   assignment_percent: number;
   correct_output: string;
+  args?: string;
+}
   args?: string;  // Add args field
 }
 
@@ -50,6 +52,9 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
     assignment_name: '',
     assignment_date: new Date().toISOString().split('T')[0],
     assignment_percent: 0,
+    correct_output: '',
+    args: ''
+  });
     correct_output: '',
     args: ''  // Initialize args field
   });
@@ -130,6 +135,8 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
       assignment_date: new Date().toISOString().split('T')[0],
       assignment_percent: 0,
       correct_output: '',
+      args: ''
+      correct_output: '',
       args: ''  // Initialize args field
     });
   };
@@ -179,6 +186,23 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                   />
                 </LocalizationProvider>
 
+            <TextField
+              label="Assignment Percentage"
+              type="number"
+              value={formData.assignment_percent}
+              onChange={(e) => setFormData({ ...formData, assignment_percent: Number(e.target.value) })}
+              required
+              fullWidth
+              inputProps={{ min: 0, max: 100 }}
+            />
+
+            <TextField
+              label="Command Line Arguments (Optional)"
+              value={formData.args || ''}
+              onChange={(e) => setFormData({ ...formData, args: e.target.value })}
+              fullWidth
+              helperText="Enter command line arguments separated by spaces"
+            />
                 {/* Assignment Percentage with remaining info */}
                 <Box sx={{ mt: 3, mb: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
