@@ -27,17 +27,24 @@ class EvaluationService:
         # Get all assignments from database
         assignments = self.db.query(Assignment).all()
         
-        # Get all student folders
-        student_folders = [f.name for f in os.scandir(submissions_dir) if f.is_dir()]
-        
-        for folder in student_folders:
-            student_id = self.extract_student_id(folder)
-            if not student_id:
+        for assignment in assignments:
+            # Form path to the specific assignment's student submissions folder
+            assignment_dir = os.path.join(submissions_dir, assignment.assignment_name)
+            student_submissions_dir = os.path.join(assignment_dir, "student_submissions")
+            
+            if not os.path.exists(student_submissions_dir):
+                print(f"Student submissions directory not found for assignment: {assignment.assignment_name}")
                 continue
                 
-            student_dir = os.path.join(submissions_dir, folder)
+            # Get all student folders inside this assignment's student_submissions directory
+            student_folders = [f.name for f in os.scandir(student_submissions_dir) if f.is_dir()]
             
-            for assignment in assignments:
+            for folder in student_folders:
+                student_id = self.extract_student_id(folder)
+                if not student_id:
+                    continue
+                    
+                student_dir = os.path.join(student_submissions_dir, folder)
                 result = self.evaluate_assignment(student_id, student_dir, assignment)
                 if result:
                     results.append(result)
@@ -60,9 +67,12 @@ class EvaluationService:
         # In a real system, you might want to match files by name or analyze all files
         submission_file = code_files[0]
         
-        # Compile and run the submission
+        # Prepare command line arguments if specified
+        args_list = assignment.args.split() if assignment.args else []
+        
+        # Compile and run the submission with args
         print(f"Evaluating {submission_file} for student {student_id}, assignment {assignment.assignment_no}")
-        student_output = compile_and_run(submission_file)
+        student_output = compile_and_run(submission_file, args_list)
         print(f"Student output: '{student_output}', Expected: '{assignment.correct_output}'")
         
         # Compare with expected output
@@ -108,16 +118,24 @@ class EvaluationService:
         assignment = self.db.query(Assignment).filter(Assignment.assignment_no == assignment_no).first()
         if not assignment:
             return []
-            
-        # Get all student folders
-        student_folders = [f.name for f in os.scandir(submissions_dir) if f.is_dir()]
+        
+        # Form path to this assignment's student submissions folder
+        assignment_dir = os.path.join(submissions_dir, assignment.assignment_name)
+        student_submissions_dir = os.path.join(assignment_dir, "student_submissions")
+        
+        if not os.path.exists(student_submissions_dir):
+            print(f"Student submissions directory not found for assignment: {assignment.assignment_name}")
+            return []
+        
+        # Get all student folders inside this assignment's student_submissions directory
+        student_folders = [f.name for f in os.scandir(student_submissions_dir) if f.is_dir()]
         
         for folder in student_folders:
             student_id = self.extract_student_id(folder)
             if not student_id:
                 continue
                 
-            student_dir = os.path.join(submissions_dir, folder)
+            student_dir = os.path.join(student_submissions_dir, folder)
             result = self.evaluate_assignment(student_id, student_dir, assignment)
             if result:
                 results.append(result)
