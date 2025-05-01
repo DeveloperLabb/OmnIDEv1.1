@@ -19,6 +19,7 @@
     "@types/react-dom": "^18.2.0",
     "date-fns": "^2.30.0",
     "electron": "^25.0.0",
+    "ps-node": "^0.1.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
