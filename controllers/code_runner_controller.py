@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from database.database import get_db
 from pydantic import BaseModel
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 import os
 import tempfile
 import zipfile
@@ -32,6 +32,7 @@ class CodeRunnerController:
         self.router.add_api_route("/compile", self.compile_code, methods=["POST"])
         self.router.add_api_route("/run", self.run_code, methods=["POST"])
         self.router.add_api_route("/extract", self.extract_zip, methods=["POST"])
+        self.router.add_api_route("/file", self.read_file, methods=["GET"], response_class=PlainTextResponse)
 
     async def compile_code(self, request: CompileRequest) -> Dict:
         try:
@@ -165,6 +166,12 @@ class CodeRunnerController:
                     file_path = os.path.join(root, file)
                     relative_path = os.path.relpath(file_path, extract_path)
                     extracted_files.append(relative_path)
+                
+                # Also add directory entries with a trailing slash
+                for dir_name in dirs:
+                    dir_path = os.path.join(root, dir_name)
+                    relative_path = os.path.relpath(dir_path, extract_path) + '/'
+                    extracted_files.append(relative_path)
             
             return {
                 "success": True, 
@@ -177,6 +184,32 @@ class CodeRunnerController:
             raise HTTPException(status_code=400, detail="Invalid zip file")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error extracting zip: {str(e)}")
+    
+    async def read_file(self, path: str = Query(...)) -> str:
+        """
+        Read and return a file's content at the given path
+        """
+        try:
+            # Security check: ensure the path is within the temp directory
+            if not os.path.abspath(path).startswith(os.path.abspath(self.temp_dir)):
+                raise HTTPException(status_code=403, detail="Access denied: path is outside allowed directory")
+            
+            if not os.path.exists(path):
+                raise HTTPException(status_code=404, detail="File not found")
+            
+            if os.path.isdir(path):
+                raise HTTPException(status_code=400, detail="Path is a directory, not a file")
+            
+            # Read and return the file content
+            with open(path, 'r', errors='replace') as f:
+                content = f.read()
+            
+            return content
+        
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
     
     def _get_file_extension(self, language: str) -> str:
         extensions = {

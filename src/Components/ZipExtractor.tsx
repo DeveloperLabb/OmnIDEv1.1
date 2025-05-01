@@ -4,20 +4,16 @@ import {
   Button, 
   Typography, 
   Paper, 
-  List, 
-  ListItem, 
-  ListItemText, 
-  ListItemIcon, 
   CircularProgress,
   Alert,
   Collapse,
-  IconButton
+  IconButton,
+  Divider
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import FolderIcon from '@mui/icons-material/Folder';
 import CloseIcon from '@mui/icons-material/Close';
 import { extractZip } from '../services/api';
+import ExtractedCodeViewer from './ExtractedCodeViewer';
 
 const ZipExtractor: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -26,6 +22,7 @@ const ZipExtractor: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showCodeViewer, setShowCodeViewer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +31,10 @@ const ZipExtractor: React.FC = () => {
       if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
         setSelectedFile(file);
         setError(null);
+        // Reset previous extraction results when a new file is selected
+        setExtractedFiles([]);
+        setExtractPath('');
+        setShowCodeViewer(false);
       } else {
         setSelectedFile(null);
         setError('Please select a valid ZIP file');
@@ -51,6 +52,7 @@ const ZipExtractor: React.FC = () => {
     setError(null);
     setSuccess(null);
     setExtractedFiles([]);
+    setShowCodeViewer(false);
 
     const formData = new FormData();
     formData.append('file', selectedFile);
@@ -62,6 +64,8 @@ const ZipExtractor: React.FC = () => {
         setExtractedFiles(response.files);
         setExtractPath(response.extract_path);
         setSuccess(`ZIP extracted successfully to: ${response.extract_path}`);
+        // Show code viewer if extraction is successful
+        setShowCodeViewer(true);
       } else {
         setError('Failed to extract ZIP file');
       }
@@ -80,7 +84,7 @@ const ZipExtractor: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%', mt: 2 }}>
-      <Paper elevation={3} sx={{ p: 2 }}>
+      <Paper elevation={3} sx={{ p: 2, mb: showCodeViewer ? 2 : 0 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>ZIP File Extractor</Typography>
         
         <Box sx={{ 
@@ -153,25 +157,18 @@ const ZipExtractor: React.FC = () => {
             )}
           </Box>
         </Collapse>
-        
-        {extractedFiles.length > 0 && (
-          <Box>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>Extracted Files:</Typography>
-            <Paper variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
-              <List dense>
-                {extractedFiles.map((file, index) => (
-                  <ListItem key={index}>
-                    <ListItemIcon>
-                      {file.endsWith('/') ? <FolderIcon /> : <InsertDriveFileIcon />}
-                    </ListItemIcon>
-                    <ListItemText primary={file} />
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          </Box>
-        )}
       </Paper>
+      
+      {showCodeViewer && extractedFiles.length > 0 && (
+        <Paper elevation={3} sx={{ p: 2, mt: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>Code Explorer</Typography>
+          <Divider sx={{ mb: 2 }} />
+          <ExtractedCodeViewer 
+            extractedFiles={extractedFiles} 
+            extractPath={extractPath} 
+          />
+        </Paper>
+      )}
     </Box>
   );
 };

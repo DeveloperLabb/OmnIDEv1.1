@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/mode-javascript';
 import 'ace-builds/src-noconflict/mode-python';
@@ -13,11 +13,13 @@ import { compileCode, runCode } from '../services/api';
 interface CodeEditorProps {
   initialCode?: string;
   initialLanguage?: string;
+  filename?: string;
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ 
   initialCode = '// Write your code here',
-  initialLanguage = 'javascript'
+  initialLanguage = 'javascript',
+  filename = ''
 }) => {
   const [code, setCode] = useState(initialCode);
   const [language, setLanguage] = useState(initialLanguage);
@@ -26,6 +28,14 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   const [output, setOutput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+
+  // Update code and language when props change
+  useEffect(() => {
+    setCode(initialCode);
+    setLanguage(initialLanguage);
+    setOutput('');
+    setStatusMessage('');
+  }, [initialCode, initialLanguage, filename]);
 
   const getAceMode = (lang: string) => {
     switch (lang.toLowerCase()) {
@@ -101,10 +111,12 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   };
 
   return (
-    <Box sx={{ width: '100%', mt: 2 }}>
+    <Box sx={{ width: '100%'}}>
       <Paper elevation={3} sx={{ p: 2, mb: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6">Code Editor</Typography>
+          <Typography variant="h6">
+            {filename ? `Editing: ${filename}` : 'Code Editor'}
+          </Typography>
           <FormControl sx={{ minWidth: 120 }}>
             <InputLabel id="language-select-label">Language</InputLabel>
             <Select
