@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   Paper, Typography, Box, Divider, Chip, 
   TextField, Button, 
-  Dialog, DialogActions, DialogContent, DialogTitle
+  Dialog, DialogActions, DialogContent, DialogTitle,
+  Snackbar, Alert, CircularProgress
 } from '@mui/material';
 import { 
   CalendarToday as CalendarTodayIcon,
@@ -14,6 +15,7 @@ import {
 } from '@mui/icons-material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { updateAssignment, deleteAssignment } from '../services/api';
 
 interface AssignmentType {
   assignment_no: number;
@@ -26,12 +28,28 @@ interface AssignmentType {
 
 interface AssignmentDetailsProps {
   assignment: AssignmentType;
+  onAssignmentUpdate?: () => void;
+  onAssignmentDelete?: () => void;
 }
 
-const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => {
+const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ 
+  assignment, 
+  onAssignmentUpdate, 
+  onAssignmentDelete 
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedAssignment, setEditedAssignment] = useState<AssignmentType>({...assignment});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const handleChange = (field: keyof AssignmentType, value: any) => {
     setEditedAssignment({
@@ -47,12 +65,66 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
 
   const cancelEditing = () => {
     setIsEditing(false);
+    setEditedAssignment({...assignment});
   };
 
-  const saveChanges = () => {
-    console.log('Saving assignment:', editedAssignment);
-    setIsEditing(false);
-    alert('Assignment updated successfully!');
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  const saveChanges = async () => {
+    setLoading(true);
+    try {
+      // Format date if needed
+      const formattedData = {
+        ...editedAssignment,
+        assignment_date: new Date(editedAssignment.assignment_date).toISOString().split('T')[0],
+        assignment_percent: Number(editedAssignment.assignment_percent)
+      };
+
+      await updateAssignment(assignment.assignment_no, formattedData);
+      setIsEditing(false);
+      showSnackbar('Assignment updated successfully!', 'success');
+      
+      // Trigger refresh in parent component
+      if (onAssignmentUpdate) {
+        onAssignmentUpdate();
+      }
+    } catch (error) {
+      console.error('Failed to update assignment:', error);
+      showSnackbar(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleteDialogOpen(false);
+    setLoading(true);
+    try {
+      await deleteAssignment(assignment.assignment_no);
+      showSnackbar('Assignment deleted successfully!', 'success');
+      
+      // Notify parent component of the deletion after a small delay to show the success message
+      if (onAssignmentDelete) {
+        setTimeout(() => {
+          onAssignmentDelete();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Failed to delete assignment:', error);
+      showSnackbar(`Failed to delete: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,7 +136,9 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
         mb: 2, 
         gap: 1 
       }}>
-        {isEditing ? (
+        {loading ? (
+          <CircularProgress size={24} />
+        ) : isEditing ? (
           <>
             <Button 
               variant="contained" 
@@ -131,7 +205,7 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
                   value={new Date(editedAssignment.assignment_date)}
                   onChange={(newValue) => {
                     if (newValue) {
-                      handleChange('assignment_date', newValue.toISOString());
+                      handleChange('assignment_date', newValue.toISOString().split('T')[0]);
                     }
                   }}
                   slotProps={{ textField: { variant: 'outlined', size: 'small' } }}
@@ -142,7 +216,7 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
                 label="Grade %"
                 type="number"
                 value={editedAssignment.assignment_percent}
-                onChange={(e) => handleChange('assignment_percent', parseInt(e.target.value))}
+                onChange={(e) => handleChange('assignment_percent', parseFloat(e.target.value))}
                 variant="outlined"
                 size="small"
               />
@@ -180,12 +254,20 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
             <TextField
               fullWidth
               multiline
-              rows={2}
+              rows={4}  // Increased from 2 to 4 rows for better editing
               value={editedAssignment.args || ''}
               onChange={(e) => handleChange('args', e.target.value)}
               placeholder="Command line arguments (if any)"
               variant="outlined"
-              sx={{ fontFamily: 'monospace' }}
+              sx={{ 
+                fontFamily: 'monospace',
+                '& .MuiOutlinedInput-root': {
+                  '& textarea': {
+                    overflowY: 'auto',
+                    maxHeight: '200px'
+                  }
+                }
+              }}
             />
           ) : (
             <Paper 
@@ -194,10 +276,12 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
                 p: 2, 
                 fontFamily: 'monospace', 
                 bgcolor: 'grey.50',
-                whiteSpace: 'pre-wrap' 
+                whiteSpace: 'pre-wrap',
+                overflow: 'auto',
+                maxHeight: '200px'  // Added max height with scrolling like expected output
               }}
             >
-              {assignment.args || 'None specified'}
+              {assignment.args && assignment.args.trim() !== '' ? assignment.args : 'None specified'}
             </Paper>
           )}
         </Box>
@@ -215,7 +299,15 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
               value={editedAssignment.correct_output}
               onChange={(e) => handleChange('correct_output', e.target.value)}
               variant="outlined"
-              sx={{ fontFamily: 'monospace' }}
+              sx={{ 
+                fontFamily: 'monospace',
+                '& .MuiOutlinedInput-root': {
+                  '& textarea': {
+                    overflowY: 'auto',
+                    maxHeight: '300px'
+                  }
+                } 
+              }}
             />
           ) : (
             <Paper 
@@ -246,13 +338,26 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ assignment }) => 
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button color="error" onClick={() => {
-            setDeleteDialogOpen(false);
-          }}>
+          <Button color="error" onClick={handleDelete}>
             Delete
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar 
+        open={snackbar.open}
+        autoHideDuration={6000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

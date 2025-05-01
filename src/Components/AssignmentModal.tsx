@@ -27,6 +27,7 @@ interface AssignmentData {
   assignment_date: string;
   assignment_percent: number;
   correct_output: string;
+  args?: string;  // Add args field
 }
 
 interface AssignmentType {
@@ -49,7 +50,8 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
     assignment_name: '',
     assignment_date: new Date().toISOString().split('T')[0],
     assignment_percent: 0,
-    correct_output: ''
+    correct_output: '',
+    args: ''  // Initialize args field
   });
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
   const [remainingPercentage, setRemainingPercentage] = useState(100);
@@ -127,7 +129,8 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
       assignment_name: '',
       assignment_date: new Date().toISOString().split('T')[0],
       assignment_percent: 0,
-      correct_output: ''
+      correct_output: '',
+      args: ''  // Initialize args field
     });
   };
 
@@ -208,6 +211,18 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                     max={remainingPercentage}
                   />
                 </Box>
+
+                {/* Add Arguments field */}
+                <TextField
+                  label="Arguments"
+                  value={formData.args || ''}
+                  onChange={(e) => setFormData({ ...formData, args: e.target.value })}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Command line arguments (if any)"
+                  helperText="Optional: Enter arguments to be passed to the program"
+                />
 
                 <TextField
                   label="Correct Output"

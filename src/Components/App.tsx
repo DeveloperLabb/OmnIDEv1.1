@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import AssignmentDetails from './AssignmentDetails';
 import { Box, Toolbar, Fade } from '@mui/material';
 import EvaluationPanel from './EvaluationPanel';
+import { getAllAssignments } from '../services/api';
 
 interface AssignmentType {
   assignment_no: number;
@@ -17,6 +18,30 @@ interface AssignmentType {
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentType | null>(null);
+  const [assignments, setAssignments] = useState<AssignmentType[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Fetch all assignments
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        const data = await getAllAssignments();
+        setAssignments(data);
+        
+        // Update selected assignment with fresh data if one is selected
+        if (selectedAssignment) {
+          const updated = data.find(a => a.assignment_no === selectedAssignment.assignment_no);
+          if (updated) {
+            setSelectedAssignment(updated);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch assignments:', error);
+      }
+    };
+
+    fetchAssignments();
+  }, [refreshTrigger]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -38,16 +63,32 @@ const App = () => {
     }
   };
 
+  const refreshAssignments = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const handleAssignmentUpdate = useCallback(() => {
+    refreshAssignments();
+  }, [refreshAssignments]);
+
+  const handleAssignmentDelete = useCallback(() => {
+    setSelectedAssignment(null);
+    refreshAssignments();
+  }, [refreshAssignments]);
+
   return (
     <Box sx={{ display: 'flex' }}>
       <Navbar 
         toggleSidebar={toggleSidebar} 
         goToHome={goToHome} 
+        onAssignmentCreated={refreshAssignments}
       />
       <Sidebar 
         open={sidebarOpen} 
         onAssignmentClick={handleAssignmentClick} 
         onClose={closeSidebar}
+        assignments={assignments}
+        refreshAssignments={refreshAssignments}
       />
       
       <Box
@@ -62,19 +103,16 @@ const App = () => {
         {selectedAssignment ? (
           <Fade in={true} timeout={500}>
             <div>
-              <AssignmentDetails assignment={selectedAssignment} />
+              <AssignmentDetails 
+                assignment={selectedAssignment}
+                onAssignmentUpdate={handleAssignmentUpdate}
+                onAssignmentDelete={handleAssignmentDelete}
+              />
             </div>
           </Fade>
         ) : (
           <Fade in={true} timeout={500}>
             <div className="flex items-center justify-center h-[calc(100vh-64px)]">
-           {/* ... 
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-blue-600">Welcome to OmnIDE</h1>
-                <p className="mt-4 text-gray-600">Your next generation IDE</p>
-                <p className="mt-2 text-gray-500">Select an assignment from the sidebar to view details</p>
-              </div>
-            */}
               <div>
                 <EvaluationPanel />
               </div>
@@ -85,4 +123,5 @@ const App = () => {
     </Box>
   );
 };
+
 export default App;

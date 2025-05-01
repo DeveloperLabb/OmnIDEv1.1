@@ -27,7 +27,9 @@ interface SidebarProps {
   open: boolean;
   onAssignmentClick?: (assignment: AssignmentType) => void;
   onClose?: () => void;
-  transitionDuration?: number;  // Add this prop
+  transitionDuration?: number;
+  assignments?: AssignmentType[];
+  refreshAssignments?: () => void;
 }
 
 interface AssignmentType {
@@ -40,13 +42,14 @@ interface AssignmentType {
 }
 
 const drawerWidth = 240;
-const API_BASE_URL = 'http://localhost:8000/api';
 
 const Sidebar: React.FC<SidebarProps> = ({ 
   open, 
   onAssignmentClick, 
   onClose, 
-  transitionDuration = 200  // Default to 500ms (0.5s)
+  transitionDuration = 200,
+  assignments: externalAssignments,
+  refreshAssignments
 }) => {
   const [assignmentsOpen, setAssignmentsOpen] = useState(false);
   const [assignments, setAssignments] = useState<AssignmentType[]>([]);
@@ -54,31 +57,43 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchAssignments = async () => {
-      setLoading(true);
+    // If external assignments are provided, use them instead of fetching
+    if (externalAssignments && externalAssignments.length > 0) {
+      setAssignments(externalAssignments);
+      setLoading(false);
       setError(null);
-      try {
-        const response = await fetch(`${API_BASE_URL}/assignments/`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch assignments: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setAssignments(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        console.error('Error fetching assignments:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    } else {
+      // Only fetch if no external assignments provided
+      fetchAssignments();
+    }
+  }, [externalAssignments]);
 
-    fetchAssignments();
-  }, []);
+  const fetchAssignments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://localhost:8000/api/assignments/`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch assignments: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setAssignments(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      console.error('Error fetching assignments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAssignmentsClick = () => {
     setAssignmentsOpen(!assignmentsOpen);
+    // If user opens the assignments panel, refresh the assignments list
+    if (!assignmentsOpen && refreshAssignments) {
+      refreshAssignments();
+    }
   };
 
   const handleMenuItemClick = (path: string) => {
@@ -153,7 +168,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       variant="temporary"
       open={open}
       onClose={onClose}
-      transitionDuration={transitionDuration}  // Add this prop
+      transitionDuration={transitionDuration}
       sx={{
         width: drawerWidth,
         flexShrink: 0,

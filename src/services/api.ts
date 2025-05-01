@@ -3,6 +3,7 @@ interface Assignment {
   assignment_date: string;
   assignment_percent: number;
   correct_output: string;
+  args?: string;  // Add args field
 }
 
 interface AssignmentResponse {
@@ -34,7 +35,8 @@ export const createAssignment = async (data: Assignment) => {
   const formattedData = {
     ...data,
     assignment_date: data.assignment_date, // Date is already in YYYY-MM-DD format from the form
-    assignment_percent: Number(data.assignment_percent)
+    assignment_percent: Number(data.assignment_percent),
+    args: data.args || null  // Include args in the API request
   };
 
   const response = await fetch(`${API_BASE_URL}/assignments/`, {
@@ -124,6 +126,42 @@ export const updateConfiguration = async (id: number, data: { language_name: str
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to update configuration');
+  }
+
+  return response.json();
+};
+
+export const updateAssignment = async (assignmentNo: number, data: {
+  assignment_name: string;
+  assignment_date: string;
+  assignment_percent: number;
+  correct_output: string;
+  args?: string;
+}): Promise<AssignmentResponse> => {
+  const response = await fetch(`${API_BASE_URL}/assignments/${assignmentNo}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update assignment');
+  }
+
+  return response.json();
+};
+
+export const deleteAssignment = async (assignmentNo: number): Promise<{ message: string }> => {
+  const response = await fetch(`${API_BASE_URL}/assignments/${assignmentNo}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to delete assignment');
   }
 
   return response.json();

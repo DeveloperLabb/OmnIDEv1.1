@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 from models.assignment_model import Assignment, AssignmentResponse
 from database.database import get_db
@@ -13,6 +13,13 @@ class AssignmentCreate(BaseModel):
     correct_output: str
     args: Optional[str] = None  # Optional argument with default value None
 
+class AssignmentUpdate(BaseModel):
+    assignment_name: Optional[str] = None
+    assignment_date: Optional[date] = None
+    assignment_percent: Optional[float] = None
+    correct_output: Optional[str] = None
+    args: Optional[str] = None
+
 class AssignmentController:
     def __init__(self):
         self.router = APIRouter(prefix="/assignments", tags=["assignments"])
@@ -22,6 +29,9 @@ class AssignmentController:
         self.router.add_api_route("/", self.create_assignment, methods=["POST"], response_model=AssignmentResponse)
         self.router.add_api_route("/{assignment_no}", self.get_assignment, methods=["GET"], response_model=AssignmentResponse)
         self.router.add_api_route("/", self.get_all_assignments, methods=["GET"], response_model=List[AssignmentResponse])
+        # Add routes for update and delete
+        self.router.add_api_route("/{assignment_no}", self.update_assignment, methods=["PUT"], response_model=AssignmentResponse)
+        self.router.add_api_route("/{assignment_no}", self.delete_assignment, methods=["DELETE"])
 
     async def create_assignment(self, assignment: AssignmentCreate, db: Session = Depends(get_db)) -> Assignment:
         db_assignment = Assignment(
@@ -46,7 +56,7 @@ class AssignmentController:
             raise HTTPException(status_code=404, detail=f"Assignment {assignment_no} not found")
         return db_assignment
 
-    async def get_all_assignments(self, db: Session = Depends(get_db), args: Optional[str] = None) -> List[AssignmentResponse]:
+    async def get_all_assignments(self, db: Session = Depends(get_db)) -> List[AssignmentResponse]:
         assignments = db.query(Assignment).all()
         return [AssignmentResponse(
             assignment_no=a.assignment_no,
@@ -54,5 +64,37 @@ class AssignmentController:
             assignment_date=a.assignment_date,
             assignment_percent=a.assignment_percent,
             correct_output=a.correct_output,
-            args=args  # Pass the optional argument
+            args=a.args  # Return actual args from database
         ) for a in assignments]
+
+    async def update_assignment(self, assignment_no: int, assignment: AssignmentUpdate, db: Session = Depends(get_db)) -> Assignment:
+        db_assignment = db.query(Assignment).filter(Assignment.assignment_no == assignment_no).first()
+        if not db_assignment:
+            raise HTTPException(status_code=404, detail=f"Assignment {assignment_no} not found")
+
+        # Update only provided fields
+        update_data = assignment.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            if value is not None:  # Skip None values
+                setattr(db_assignment, key, value)
+
+        try:
+            db.commit()
+            db.refresh(db_assignment)
+            return db_assignment
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=str(e))
+
+    async def delete_assignment(self, assignment_no: int, db: Session = Depends(get_db)):
+        db_assignment = db.query(Assignment).filter(Assignment.assignment_no == assignment_no).first()
+        if not db_assignment:
+            raise HTTPException(status_code=404, detail=f"Assignment {assignment_no} not found")
+
+        try:
+            db.delete(db_assignment)
+            db.commit()
+            return {"message": f"Assignment {assignment_no} deleted successfully"}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=str(e))

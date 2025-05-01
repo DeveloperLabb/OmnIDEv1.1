@@ -12,10 +12,11 @@ import { useTheme } from '../contexts/ThemeContext';
 
 interface NavbarProps {
   toggleSidebar: () => void;
-  goToHome?: () => void; // Add this new prop
+  goToHome?: () => void; 
+  onAssignmentCreated?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome }) => {
+const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCreated }) => {
   const { darkMode, toggleDarkMode } = useTheme();
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
@@ -48,17 +49,24 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome }) => {
       setIsSubmitting(true);
       await createAssignment(data);
       handleCloseAssignmentModal();
-      // You could add a success notification here
       
-      // Instead of reloading the page, handle state update or fetch new assignments
-      // You could add a callback to refresh assignments in the sidebar
-      // For example: refreshAssignments();
+      // Refresh assignments list after creating a new one
+      if (onAssignmentCreated) {
+        onAssignmentCreated();
+      }
+      
+      showSnackbar('Assignment created successfully', 'success');
     } catch (error) {
       console.error('Failed to create assignment:', error);
-      // You could add error handling here
+      showSnackbar(`Failed to create assignment: ${error.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Helper function for snackbar
+  const showSnackbar = (message, severity) => {
+    // You can add snackbar state and component here if it doesn't exist
   };
 
   const handleSubmitConfiguration = async (data) => {
