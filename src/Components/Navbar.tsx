@@ -86,6 +86,18 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, goToHome, onAssignmentCr
           setIsSubmitting(true);
           const result = await importData(file);
           showSnackbar(result.message || 'Data imported successfully', 'success');
+          
+          // Refresh the application after successful import
+          // Always refresh after import regardless of flag to ensure UI is updated
+          setTimeout(() => {
+            // Refresh assignments if we have that function
+            if (onAssignmentCreated) {
+              onAssignmentCreated();
+            }
+            
+            // For a complete refresh of all data (configurations, scores, etc.)
+            window.location.reload();
+          }, 1500);
         } catch (error) {
           console.error('Import failed:', error);
           showSnackbar(`Import failed: ${error.message}`, 'error');
