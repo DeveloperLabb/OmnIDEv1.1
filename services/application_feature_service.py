@@ -62,72 +62,52 @@ class ApplicationFeatureService:
 
     @staticmethod
     async def import_data(data: dict, db: Session):
-        """Import application data from a JSON object."""
+        """Import application data from a JSON object, replacing all existing data."""
         try:
+            # Begin transaction
+            db.begin()
+            
+            # Clear all existing data
+            db.query(Score).delete()
+            db.query(Assignment).delete()
+            db.query(Configuration).delete()
+            
             # Import assignments
             if "assignments" in data:
                 for a_data in data["assignments"]:
-                    # Check if assignment exists
-                    existing = db.query(Assignment).filter(Assignment.assignment_no == a_data.get("assignment_no")).first()
-                    if existing:
-                        # Update existing
-                        for key, value in a_data.items():
-                            if key != "assignment_no":  # Don't update primary key
-                                if key == "assignment_date":
-                                    value = datetime.fromisoformat(value)
-                                setattr(existing, key, value)
-                    else:
-                        # Create new
-                        assignment = Assignment(
-                            assignment_no=a_data.get("assignment_no"),
-                            assignment_name=a_data.get("assignment_name"),
-                            assignment_date=datetime.fromisoformat(a_data.get("assignment_date")),
-                            assignment_percent=a_data.get("assignment_percent"),
-                            correct_output=a_data.get("correct_output"),
-                            args=a_data.get("args")
-                        )
-                        db.add(assignment)
+                    assignment = Assignment(
+                        assignment_no=a_data.get("assignment_no"),
+                        assignment_name=a_data.get("assignment_name"),
+                        assignment_date=datetime.fromisoformat(a_data.get("assignment_date")),
+                        assignment_percent=a_data.get("assignment_percent"),
+                        correct_output=a_data.get("correct_output"),
+                        args=a_data.get("args")
+                    )
+                    db.add(assignment)
 
             # Import configurations
             if "configurations" in data:
                 for c_data in data["configurations"]:
-                    # Check if configuration exists
-                    existing = db.query(Configuration).filter(Configuration.config_id == c_data.get("config_id")).first()
-                    if existing:
-                        # Update existing
-                        for key, value in c_data.items():
-                            if key != "config_id":  # Don't update primary key
-                                setattr(existing, key, value)
-                    else:
-                        # Create new
-                        config = Configuration(
-                            language_name=c_data.get("language_name"),
-                            path=c_data.get("path")
-                        )
-                        db.add(config)
+                    config = Configuration(
+                        config_id=c_data.get("config_id"),  # Include config_id to maintain references
+                        language_name=c_data.get("language_name"),
+                        path=c_data.get("path")
+                    )
+                    db.add(config)
 
             # Import scores
             if "scores" in data:
                 for s_data in data["scores"]:
-                    # Check if score exists
-                    existing = db.query(Score).filter(
-                        Score.assignment_no == s_data.get("assignment_no"),
-                        Score.student_id == s_data.get("student_id")
-                    ).first()
-                    if existing:
-                        # Update existing
-                        existing.score = s_data.get("score")
-                    else:
-                        # Create new
-                        score = Score(
-                            assignment_no=s_data.get("assignment_no"),
-                            student_id=s_data.get("student_id"),
-                            score=s_data.get("score")
-                        )
-                        db.add(score)
+                    score = Score(
+                        assignment_no=s_data.get("assignment_no"),
+                        student_id=s_data.get("student_id"),
+                        score=s_data.get("score")
+                    )
+                    db.add(score)
 
+            # Commit all changes
             db.commit()
-            return {"message": "Import completed successfully"}
+            return {"message": "Import completed successfully. All previous data replaced."}
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
