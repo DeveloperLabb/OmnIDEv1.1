@@ -45,4 +45,7 @@ app.include_router(configuration_controller.router, prefix="/api")
 app.include_router(application_feature_controller.router, prefix="/api")
 
 if __name__ == "__main__":
-    uvicorn.run("main_api:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
+
+    # uvicorn.run("main_api:app", host="127.0.0.1", port=8000, reload=True) for dev server
+    # pyinstaller omniide.spec for production build.
