@@ -4,6 +4,11 @@ const { spawn, exec } = require('child_process');
 const process = require('process');
 const ps = require('ps-node'); // You'll need to add this: npm install ps-node
 
+// At the top of the file, add this line
+process.env.NODE_ENV = process.env.NODE_ENV || (app.isPackaged ? 'production' : 'development');
+
+console.log(`Running in ${process.env.NODE_ENV} mode`);
+
 let mainWindow;
 let uvicornProcess;
 let viteDevProcess;
@@ -91,6 +96,91 @@ function startUvicornServer() {
   uvicornProcess.unref();
 }
 
+// Add this function to start the packaged Python API instead of uvicorn directly
+
+function startPackagedPythonApi() {
+  // In development mode, use uvicorn directly
+  if (process.env.NODE_ENV === 'development') {
+    startUvicornServer();
+    return;
+  }
+  
+  // In production mode, use the packaged Python executable
+  console.log('Starting packaged Python API...');
+  
+  // This is the correct path to access resources in the packaged app
+  const pythonApiPath = path.join(
+    app.isPackaged ? process.resourcesPath : app.getAppPath(), 
+    'python_api', 
+    'OmnIDE' + (process.platform === 'win32' ? '.exe' : '')
+  );
+  
+  console.log(`Python API path: ${pythonApiPath}`);
+  
+  try {
+    if (process.platform === 'win32') {
+      // On Windows, use the built-in admin privileges from the manifest
+      // The exe already has the uac_admin=True from PyInstaller and
+      // requestedExecutionLevel: "requireAdministrator" from electron-builder
+      const options = {
+        detached: false,
+        shell: true, // Use shell on Windows
+        windowsHide: false, // Make sure the console window isn't hidden
+        windowsVerbatimArguments: true
+      };
+      
+      // Quote the path to handle spaces properly
+      const quotedPath = `"${pythonApiPath}"`;
+      uvicornProcess = spawn(quotedPath, [], options);
+      
+      // Add flag to track the first startup message
+      let startupMessageShown = false;
+      
+      uvicornProcess.stdout.on('data', (data) => {
+        const output = data.toString().trim();
+        // Only log the startup message once
+        if (output.includes('Uvicorn running on') && !startupMessageShown) {
+          console.log(`Python API: ${output}`);
+          startupMessageShown = true;
+        } else if (!output.includes('Will watch for changes')) {
+          // Don't log watch messages
+          console.log(`Python API: ${output}`);
+        }
+      });
+    } else {
+      // For non-Windows platforms
+      // On Unix systems, we could use sudo but it would require password input
+      // Alternative: use pkexec or gksudo if available
+      const options = {
+        detached: false,
+        shell: true
+      };
+      
+      uvicornProcess = spawn(pythonApiPath, [], options);
+      
+      uvicornProcess.stdout.on('data', (data) => {
+        console.log(`Python API: ${data.toString().trim()}`);
+      });
+    }
+    
+    uvicornProcess.stderr.on('data', (data) => {
+      console.error(`Python API Error: ${data.toString().trim()}`);
+    });
+    
+    uvicornProcess.on('close', (code) => {
+      console.log(`Python API process exited with code ${code}`);
+      uvicornProcess = null;
+    });
+    
+    uvicornProcess.on('error', (error) => {
+      console.error(`Error starting Python API: ${error.message}`);
+      uvicornProcess = null;
+    });
+  } catch (error) {
+    console.error(`Failed to start Python API executable: ${error.message}`);
+  }
+}
+
 function terminateAllProcesses() {
   console.log('Terminating all processes...');
   
@@ -164,44 +254,72 @@ function createWindow() {
     }
   });
 
-  // In development, load from Vite dev server
-  mainWindow.loadURL('http://localhost:5173');
+  // Add dev server URL logging
+  console.log('Loading URL:', !app.isPackaged ? 'http://localhost:5173' : `file://${path.join(__dirname, '../dist/index.html')}`);
 
-  // Enable DevTools only in development
-  if (process.env.NODE_ENV === 'development') {
+  // In development, load from Vite dev server, otherwise load from built files
+  if (!app.isPackaged) {
+    mainWindow.loadURL('http://localhost:5173');
+    // Open DevTools in development mode
     mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadURL(`file://${path.join(__dirname, '../dist/index.html')}`);
   }
 
-  // Set CSP headers
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; connect-src 'self' http://localhost:8000; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
-        ]
-      }
-    });
-  });
-  
-  mainWindow.on('closed', () => {
-    console.log('Main window closed');
-    mainWindow = null;
+  // Add error handling for page loading
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load page:', errorDescription);
+    // Try reconnecting if in development mode
+    if (!app.isPackaged) {
+      setTimeout(() => {
+        console.log('Attempting to reconnect to Vite dev server...');
+        mainWindow.loadURL('http://localhost:5173');
+      }, 3000);
+    }
   });
 }
 
-// Start app only after cleaning up any existing processes
+// In electron/main.js
 app.whenReady().then(async () => {
   // First clean up any existing processes
   await cleanupExistingProcesses();
   
-  // Start uvicorn server and wait until it's ready
-  startUvicornServer();
+  // Create and show window immediately
+  createWindow();
+
+  // In dev mode, open developer tools automatically
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
   
-  // Wait a moment for uvicorn to initialize before starting the Electron window
-  setTimeout(() => {
-    createWindow();
-  }, 1500);
+  // Start Python API in the background
+  startPackagedPythonApi();
+  
+  // In development mode, don't wait for API to be ready
+  if (!app.isPackaged) {
+    console.log('Development mode: Electron and Vite connected');
+  } else {
+    // Only in production, monitor API health
+    if (mainWindow) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow.webContents.executeJavaScript(`
+          const apiCheckInterval = setInterval(() => {
+            fetch('http://localhost:8000/api/health-check')
+              .then(response => {
+                if (response.ok) {
+                  clearInterval(apiCheckInterval);
+                  console.log('Backend API is ready');
+                  window.dispatchEvent(new CustomEvent('api-ready'));
+                }
+              })
+              .catch(e => {
+                console.log('Waiting for backend API...');
+              });
+          }, 1000);
+        `);
+      });
+    }
+  }
   
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

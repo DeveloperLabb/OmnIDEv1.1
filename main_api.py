@@ -14,11 +14,10 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="OmnIDE API")
 
-# reset_database();
-# Configure CORS
+# Modified CORS configuration to allow requests from all origins when packaged
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],  # Allow all origins for the packaged app
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,6 +28,12 @@ app.add_middleware(
 @app.head("/")
 async def root():
     return {"message": "OmnIDE API is running"}
+
+# Add health-check endpoint
+@app.get("/api/health-check")
+async def health_check():
+    """Simple endpoint to check if the API is running"""
+    return {"status": "ok"}
 
 # Initialize controllers
 assignment_controller = AssignmentController()

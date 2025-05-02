@@ -4,7 +4,8 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
-    "build": "vite build && electron-builder",
+    "prebuild": "node scripts/prepare-build.js",
+    "build": "vite build && pyinstaller omniide.spec && electron-builder",
     "start": "electron .",
     "lint": "eslint . --ext .ts,.tsx"
   },
@@ -18,7 +19,6 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "date-fns": "^2.30.0",
-    "electron": "^25.0.0",
     "ps-node": "^0.1.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
@@ -29,9 +29,11 @@
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.0.0",
     "concurrently": "^8.2.2",
+    "electron": "^25.0.0",
     "electron-builder": "^24.6.4",
     "electron-reload": "^1.5.0",
     "eslint": "^8.0.0",
+    "fs-extra": "^11.3.0",
     "postcss": "^8.0.0",
     "tailwindcss": "^3.0.0",
     "typescript": "^5.0.0",
@@ -47,6 +49,18 @@
     "files": [
       "dist/**/*",
       "electron/**/*"
-    ]
+    ],
+    "extraResources": [
+      {
+        "from": "dist/OmnIDE",
+        "to": "python_api",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "requestedExecutionLevel": "requireAdministrator"
+    }
   }
 }

@@ -8,6 +8,7 @@
 
 # Production
 /dist
+/dist_electron
 /build
 /out
 /release
@@ -75,3 +76,6 @@ __pycache__/
 # Virtual environments
 venv/
 .venv/
+
+defaultExtractLocation
+# Python cache
