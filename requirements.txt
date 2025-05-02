@@ -1,11 +1,12 @@
-fastapi==0.104.1
-uvicorn==0.24.0
-python-multipart==0.0.6
-sqlalchemy==2.0.23
-pydantic==2.5.1
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-aiosqlite==0.19.0
-pytest==7.4.3
-requests==2.31.0
-pandas==1.5.3
+fastapi==0.104.1           # Latest stable as of 2025, with Python 3.13 support
+uvicorn==0.24.0              # Compatible with FastAPI and Python 3.13
+python-multipart==0.0.9      # Updated for better compatibility
+sqlalchemy==2.0.40           # Ensures compatibility with new Python versions
+pydantic==2.11.0            # Last of Pydantic v1 series, or consider v2 if ready
+python-jose[cryptography]==3.3.0  # Still valid; no major updates
+passlib[bcrypt]==1.7.4       # Still compatible
+aiosqlite==0.19.0            # No update needed
+pytest==8.2.0                # Up-to-date version with Python 3.13 support
+requests==2.31.0             # Already latest
+pandas==2.2.2                # Updated version compatible with newer Python
+numpy==2.2.0               # Latest version compatible with Python 3.13

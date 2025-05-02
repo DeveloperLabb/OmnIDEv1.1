@@ -79,3 +79,6 @@ venv/
 
 defaultExtractLocation
 # Python cache
+
+#requirements.txt
+requirements.txt
