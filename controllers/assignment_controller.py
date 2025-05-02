@@ -290,8 +290,59 @@ class AssignmentController:
                 raise HTTPException(status_code=404, detail="No executable file found in the ZIP")
 
             # Import the language_read module for compilation and execution
-            from services.language_read import compile_and_run
-
+            from services.language_read import compile_and_run, detect_language
+            from sqlalchemy.orm import Session
+            from database.database import get_db
+            from models.configuration_model import Configuration
+            
+            # Detect the language of the file
+            detected_language, language_extension = detect_language(main_file)
+            config_path = None
+            
+            # Get database session
+            db = next(get_db())
+            
+            # Try to find existing configuration for the detected language
+            try:
+                # First check if there's any config for this language
+                config = db.query(Configuration).filter(Configuration.language_name == detected_language).first()
+                if config:
+                    config_path = config.path
+                else:
+                    # Determine default path based on detected language
+                    default_paths = {
+                        'Python': 'python' if os.name == 'posix' else 'C:\\Python310\\python.exe',
+                        'Java': 'javac' if os.name == 'posix' else 'C:\\Program Files\\Java\\jdk\\bin\\javac.exe',
+                        'C': 'gcc' if os.name == 'posix' else 'C:\\MinGW\\bin\\gcc.exe',
+                        'C++': 'g++' if os.name == 'posix' else 'C:\\MinGW\\bin\\g++.exe',
+                        'C#': 'dotnet' if os.name == 'posix' else 'C:\\Program Files\\dotnet\\dotnet.exe',
+                        'Go': 'go' if os.name == 'posix' else 'C:\\Go\\bin\\go.exe',
+                        'JavaScript': 'node' if os.name == 'posix' else 'C:\\Program Files\\nodejs\\node.exe'
+                    }
+                    
+                    # If we have a default path for this language, use it
+                    if detected_language in default_paths:
+                        config_path = default_paths[detected_language]
+                        
+                        # Check if this exact path already exists for this language
+                        existing_path = db.query(Configuration).filter(
+                            Configuration.language_name == detected_language,
+                            Configuration.path == config_path
+                        ).first()
+                        
+                        # Only add if the path doesn't already exist
+                        if not existing_path:
+                            # Automatically add this configuration to the database
+                            new_config = Configuration(
+                                language_name=detected_language,
+                                path=config_path
+                            )
+                            db.add(new_config)
+                            db.commit()
+            except Exception as db_error:
+                print(f"Database error when handling configuration: {str(db_error)}")
+                # Continue execution even if there's a database error
+            
             # Execute the file
             args_list = request.args.split() if request.args else []
             output = compile_and_run(main_file, args_list)
@@ -300,7 +351,11 @@ class AssignmentController:
             import shutil
             shutil.rmtree(temp_dir)
 
-            return {"output": output}
+            return {
+                "output": output,
+                "detected_language": detected_language,
+                "config_path": config_path
+            }
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()

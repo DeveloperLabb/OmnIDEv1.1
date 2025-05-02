@@ -35,6 +35,20 @@ interface ZipExtractionRequest {
   assignment_name: string;
 }
 
+// Add new interface for instructor file execution response
+interface InstructorFileExecuteResponse {
+  output: string;
+  detected_language?: string;
+  config_path?: string;
+}
+
+// Add new interface for configuration
+interface Configuration {
+  config_id: number;
+  language_name: string;
+  path: string;
+}
+
 const API_BASE_URL = 'http://localhost:8000/api';
 
 export const createAssignment = async (data: Assignment) => {
@@ -239,6 +253,38 @@ export const getStudentScores = async () => {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to fetch student scores');
+  }
+  
+  return response.json();
+};
+
+export const executeInstructorFile = async (filePath: string, args: string = ''): Promise<InstructorFileExecuteResponse> => {
+  const response = await fetch(`${API_BASE_URL}/assignments/execute-instructor-file`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      file_path: filePath,
+      args: args
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to execute instructor file');
+  }
+
+  return response.json();
+};
+
+// Get all configurations
+export const getAllConfigurations = async (): Promise<Configuration[]> => {
+  const response = await fetch(`${API_BASE_URL}/configurations/`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch configurations');
   }
   
   return response.json();

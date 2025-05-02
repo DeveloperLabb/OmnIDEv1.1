@@ -119,6 +119,23 @@ def compile_and_run(file_path, args=None):
     else:
         return f"Unsupported file type: {ext}"
 
+def detect_language(file_path):
+    """Detect programming language based on file extension."""
+    _, extension = os.path.splitext(file_path)
+    extension = extension.lower()
+    
+    extension_map = {
+        '.py': ('Python', '.py'),
+        '.java': ('Java', '.java'),
+        '.c': ('C', '.c'),
+        '.cpp': ('C++', '.cpp'),
+        '.cs': ('C#', '.cs'),
+        '.js': ('JavaScript', '.js'),
+        '.go': ('Go', '.go'),
+    }
+    
+    return extension_map.get(extension, ('Unknown', extension))
+
 if __name__ == "__main__":
     # Ask the user for the directory path
     directory = input("Enter the path to the directory containing the files: ")

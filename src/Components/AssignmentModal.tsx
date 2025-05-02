@@ -24,13 +24,20 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
-  Tooltip
+  Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  FormHelperText,
+  Paper
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SaveIcon from '@mui/icons-material/Save';
+import { createConfiguration, getAllConfigurations, executeInstructorFile } from '../services/api';
 
 interface AssignmentModalProps {
   open: boolean;
@@ -66,6 +73,12 @@ interface ElectronFile extends File {
   path: string;
 }
 
+interface Configuration {
+  config_id: number;
+  language_name: string;
+  path: string;
+}
+
 const API_BASE_URL = 'http://localhost:8000/api';
 
 const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubmit }) => {
@@ -83,6 +96,11 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
   const [loading, setLoading] = useState(false);
   const [executingFile, setExecutingFile] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
+  const [detectedConfigPath, setDetectedConfigPath] = useState<string | null>(null);
+  const [configurations, setConfigurations] = useState<Configuration[]>([]);
+  const [selectedConfig, setSelectedConfig] = useState<number | null>(null);
+  const [showConfigPanel, setShowConfigPanel] = useState(false);
   
   // References for the hidden file inputs
   const instructorZipInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +124,7 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
   useEffect(() => {
     if (open) {
       fetchAssignments();
+      fetchConfigurations();
       resetForm();
     }
   }, [open]);
@@ -140,6 +159,16 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
       showSnackbar('Failed to calculate remaining percentage', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchConfigurations = async () => {
+    try {
+      const configs = await getAllConfigurations();
+      setConfigurations(configs);
+    } catch (error) {
+      console.error('Failed to load configurations:', error);
+      showSnackbar('Failed to load language configurations', 'error');
     }
   };
 
@@ -216,7 +245,7 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
   };
   
   // Execute instructor file and set output as expected output
-  const executeInstructorFile = async () => {
+  const executeInstructorFileAndGetOutput = async () => {
     // Check if instructor path is valid
     if (!formData.instructor_zip_path || !formData.instructor_zip_path.endsWith('.zip')) {
       showSnackbar('Please select a valid instructor ZIP file first', 'error');
@@ -227,29 +256,35 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
     
     try {
       // Call the API endpoint for executing the instructor file
-      const response = await fetch(`${API_BASE_URL}/assignments/execute-instructor-file`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          file_path: formData.instructor_zip_path,
-          args: formData.args || ''
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to execute instructor file');
-      }
-
-      const result = await response.json();
+      const result = await executeInstructorFile(formData.instructor_zip_path, formData.args || '');
       
       // Set the output as the expected output
       setFormData({
         ...formData,
         correct_output: result.output
       });
+
+      // Handle detected language and config
+      if (result.detected_language) {
+        setDetectedLanguage(result.detected_language);
+        setDetectedConfigPath(result.config_path || '');
+        
+        // Refresh configurations to ensure we have the latest data
+        await fetchConfigurations();
+        
+        // Find and select the config if it exists
+        if (result.config_path) {
+          const matchingConfig = configurations.find(
+            c => c.language_name === result.detected_language && c.path === result.config_path
+          );
+          if (matchingConfig) {
+            setSelectedConfig(matchingConfig.config_id);
+          }
+        }
+        
+        // Show the config panel
+        setShowConfigPanel(true);
+      }
       
       showSnackbar('Instructor file executed successfully. Expected output updated.', 'success');
     } catch (error) {
@@ -257,6 +292,49 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
       showSnackbar('Failed to execute instructor file: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     } finally {
       setExecutingFile(false);
+    }
+  };
+
+  const handleChangeConfig = async (configId: number) => {
+    setSelectedConfig(configId);
+    const selectedConf = configurations.find(c => c.config_id === configId);
+    if (selectedConf) {
+      setDetectedConfigPath(selectedConf.path);
+    }
+  };
+
+  const handleSaveNewConfig = async () => {
+    if (!detectedLanguage || !detectedConfigPath) {
+      showSnackbar('Missing language or path information', 'error');
+      return;
+    }
+
+    try {
+      // Check if this path already exists for this language
+      const existingConfig = configurations.find(
+        c => c.language_name === detectedLanguage && c.path === detectedConfigPath
+      );
+
+      if (existingConfig) {
+        // If configuration already exists, just select it
+        setSelectedConfig(existingConfig.config_id);
+        showSnackbar('Configuration already exists', 'info');
+        return;
+      }
+
+      // Create new configuration
+      const result = await createConfiguration({
+        language_name: detectedLanguage,
+        path: detectedConfigPath
+      });
+
+      // Refresh configurations and select the new one
+      await fetchConfigurations();
+      setSelectedConfig(result.config_id);
+      showSnackbar('Configuration saved successfully', 'success');
+    } catch (error) {
+      console.error('Failed to save configuration:', error);
+      showSnackbar('Failed to save configuration', 'error');
     }
   };
 
@@ -454,7 +532,7 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                           </Tooltip>
                           <Tooltip title="Run instructor file to get expected output">
                             <IconButton 
-                              onClick={executeInstructorFile} 
+                              onClick={executeInstructorFileAndGetOutput} 
                               edge="end"
                               color="primary"
                               disabled={!formData.instructor_zip_path || executingFile}
@@ -474,6 +552,60 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                     onChange={handleInstructorZipChange}
                   />
                 </Box>
+
+                {/* Detected Language Config Panel */}
+                {showConfigPanel && (
+                  <Paper variant="outlined" sx={{ p: 2, mt: 1, mb: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Detected Language: <strong>{detectedLanguage}</strong>
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                      {/* Select existing configuration */}
+                      <FormControl size="small" fullWidth>
+                        <InputLabel id="config-select-label">Configuration</InputLabel>
+                        <Select
+                          labelId="config-select-label"
+                          value={selectedConfig || ''}
+                          label="Configuration"
+                          onChange={(e) => handleChangeConfig(e.target.value as number)}
+                        >
+                          <MenuItem value="">
+                            <em>Select a configuration</em>
+                          </MenuItem>
+                          {configurations
+                            .filter(config => config.language_name === detectedLanguage)
+                            .map(config => (
+                              <MenuItem key={config.config_id} value={config.config_id}>
+                                {config.path}
+                              </MenuItem>
+                            ))}
+                        </Select>
+                        <FormHelperText>Choose a saved configuration</FormHelperText>
+                      </FormControl>
+
+                      {/* Edit or create new configuration */}
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <TextField
+                          label="Configuration Path"
+                          size="small"
+                          fullWidth
+                          value={detectedConfigPath || ''}
+                          onChange={(e) => setDetectedConfigPath(e.target.value)}
+                          placeholder="Path to compiler/interpreter"
+                        />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleSaveNewConfig}
+                          disabled={!detectedLanguage || !detectedConfigPath}
+                        >
+                          Save
+                        </Button>
+                      </Box>
+                    </Box>
+                  </Paper>
+                )}
 
                 {/* Student submissions folder path field - enabled only after instructor file is set */}
                 <TextField
