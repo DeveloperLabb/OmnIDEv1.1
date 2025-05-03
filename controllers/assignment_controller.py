@@ -9,6 +9,7 @@ from services.zip_extractor import ZipExtractor
 import os
 import tempfile
 import json
+import shutil
 
 
 class AssignmentCreate(BaseModel):
@@ -122,10 +123,31 @@ class AssignmentController:
         if not db_assignment:
             raise HTTPException(status_code=404, detail=f"Assignment {assignment_no} not found")
 
+        # Get the assignment name before deleting for folder cleanup
+        assignment_name = db_assignment.assignment_name
+
         try:
+            # Delete the assignment from database
             db.delete(db_assignment)
             db.commit()
-            return {"message": f"Assignment {assignment_no} deleted successfully"}
+
+            # Delete the extracted folder if it exists
+            app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            base_extract_dir = os.path.join(app_dir, "defaultExtractLocation")
+            assignment_dir = os.path.join(base_extract_dir, assignment_name)
+
+            if os.path.exists(assignment_dir):
+                import shutil
+                shutil.rmtree(assignment_dir)
+                folder_deleted = True
+            else:
+                folder_deleted = False
+
+            return {
+                "message": f"Assignment {assignment_no} deleted successfully",
+                "folder_deleted": folder_deleted,
+                "folder_path": assignment_dir
+            }
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=400, detail=str(e))
