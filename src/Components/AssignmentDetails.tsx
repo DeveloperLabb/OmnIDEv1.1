@@ -1,21 +1,35 @@
-import React, { useState } from 'react';
-import { 
-  Paper, Typography, Box, Divider, Chip, 
-  TextField, Button, 
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Paper, Typography, Box, Divider, Chip,
+  TextField, Button,
   Dialog, DialogActions, DialogContent, DialogTitle,
-  Snackbar, Alert, CircularProgress
+  Snackbar, Alert, CircularProgress,
+  InputAdornment, IconButton, Tooltip,
+  Slider, FormControl, InputLabel, Select, MenuItem, FormHelperText
 } from '@mui/material';
-import { 
+import {
   CalendarToday as CalendarTodayIcon,
   Percent as PercentIcon,
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
-  DeleteOutline as DeleteIcon
+  DeleteOutline as DeleteIcon,
+  FolderOpen as FolderOpenIcon,
+  PlayArrow as PlayArrowIcon
 } from '@mui/icons-material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { updateAssignment, deleteAssignment } from '../services/api';
+import { updateAssignment, deleteAssignment, executeInstructorFile, createConfiguration, getAllConfigurations } from '../services/api';
+
+// Extend the Window interface to include electronAPI
+declare global {
+  interface Window {
+    electronAPI?: {
+      selectFile: (options: { filters: { name: string; extensions: string[] }[] }) => Promise<string | undefined>;
+      selectDirectory: () => Promise<string | undefined>;
+    };
+  }
+}
 
 interface AssignmentType {
   assignment_no: number;
@@ -24,6 +38,8 @@ interface AssignmentType {
   assignment_percent: number;
   correct_output: string;
   args?: string;
+  instructor_zip_path?: string;
+  student_submissions_path?: string;
 }
 
 interface AssignmentDetailsProps {
@@ -32,24 +48,110 @@ interface AssignmentDetailsProps {
   onAssignmentDelete?: () => void;
 }
 
-const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({ 
-  assignment, 
-  onAssignmentUpdate, 
-  onAssignmentDelete 
+interface Configuration {
+  config_id: number;
+  language_name: string;
+  path: string;
+}
+
+// For better type safety with Electron File API
+interface ElectronFile extends File {
+  path: string;
+}
+
+const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
+  assignment,
+  onAssignmentUpdate,
+  onAssignmentDelete
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedAssignment, setEditedAssignment] = useState<AssignmentType>({...assignment});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [executingFile, setExecutingFile] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error';
+    severity: 'success' | 'error' | 'info' | 'warning';
   }>({
     open: false,
     message: '',
     severity: 'success'
   });
+  const [remainingPercentage, setRemainingPercentage] = useState(100);
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
+  const [detectedConfigPath, setDetectedConfigPath] = useState<string | null>(null);
+  const [configurations, setConfigurations] = useState<Configuration[]>([]);
+  const [selectedConfig, setSelectedConfig] = useState<number | null>(null);
+  const [showConfigPanel, setShowConfigPanel] = useState(false);
+
+  // References for the hidden file inputs
+  const instructorZipInputRef = useRef<HTMLInputElement>(null);
+  const studentFolderInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch assignments to calculate remaining percentage and configurations
+  useEffect(() => {
+    if (isEditing) {
+      fetchAssignments();
+      fetchConfigurations();
+    }
+  }, [isEditing]);
+
+  const fetchAssignments = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/assignments/`);
+      if (response.ok) {
+        const assignments: AssignmentType[] = await response.json();
+
+        // Calculate total percentage already allocated
+        const totalAllocated = assignments.reduce(
+          (sum, a) => sum + (a.assignment_no === assignment.assignment_no ? 0 : a.assignment_percent),
+          0
+        );
+
+        // Calculate remaining percentage
+        const remaining = Math.max(0, 100 - totalAllocated);
+        setRemainingPercentage(remaining + editedAssignment.assignment_percent);
+      } else {
+        throw new Error('Failed to fetch assignments');
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      showSnackbar('Failed to calculate remaining percentage', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchConfigurations = async () => {
+    try {
+      const configs = await getAllConfigurations();
+      setConfigurations(configs);
+
+      // If we have instructor path and the config panel isn't shown yet, try to detect configuration
+      if (editedAssignment.instructor_zip_path && !showConfigPanel) {
+        detectLanguageAndConfig();
+      }
+    } catch (error) {
+      console.error('Failed to load configurations:', error);
+      showSnackbar('Failed to load language configurations', 'error');
+    }
+  };
+
+  const detectLanguageAndConfig = async () => {
+    if (!editedAssignment.instructor_zip_path) return;
+
+    // This would be a call to backend to detect language based on the instructor file
+    // For now, we'll just set a placeholder
+    if (configurations.length > 0) {
+      const firstConfig = configurations[0];
+      setDetectedLanguage(firstConfig.language_name);
+      setDetectedConfigPath(firstConfig.path);
+      setSelectedConfig(firstConfig.config_id);
+      setShowConfigPanel(true);
+    }
+  };
 
   const handleChange = (field: keyof AssignmentType, value: any) => {
     setEditedAssignment({
@@ -66,9 +168,10 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
   const cancelEditing = () => {
     setIsEditing(false);
     setEditedAssignment({...assignment});
+    setShowConfigPanel(false);
   };
 
-  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
     setSnackbar({
       open: true,
       message,
@@ -92,8 +195,9 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
 
       await updateAssignment(assignment.assignment_no, formattedData);
       setIsEditing(false);
+      setShowConfigPanel(false);
       showSnackbar('Assignment updated successfully!', 'success');
-      
+
       // Trigger refresh in parent component
       if (onAssignmentUpdate) {
         onAssignmentUpdate();
@@ -112,7 +216,7 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
     try {
       await deleteAssignment(assignment.assignment_no);
       showSnackbar('Assignment deleted successfully!', 'success');
-      
+
       // Notify parent component of the deletion after a small delay to show the success message
       if (onAssignmentDelete) {
         setTimeout(() => {
@@ -127,29 +231,181 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
     }
   };
 
+  // Execute instructor file and set output as expected output
+  const executeInstructorFileAndGetOutput = async () => {
+    // Check if instructor path is valid
+    if (!editedAssignment.instructor_zip_path || !editedAssignment.instructor_zip_path.endsWith('.zip')) {
+      showSnackbar('Please select a valid instructor ZIP file first', 'error');
+      return;
+    }
+
+    setExecutingFile(true);
+
+    try {
+      // Call the API endpoint for executing the instructor file
+      const result = await executeInstructorFile(editedAssignment.instructor_zip_path, editedAssignment.args || '');
+
+      // Set the output as the expected output
+      setEditedAssignment({
+        ...editedAssignment,
+        correct_output: result.output
+      });
+
+      // Handle detected language and config
+      if (result.detected_language) {
+        setDetectedLanguage(result.detected_language);
+        setDetectedConfigPath(result.config_path || '');
+
+        // Refresh configurations to ensure we have the latest data
+        await fetchConfigurations();
+
+        // Find and select the config if it exists
+        if (result.config_path) {
+          const matchingConfig = configurations.find(
+            c => c.language_name === result.detected_language && c.path === result.config_path
+          );
+          if (matchingConfig) {
+            setSelectedConfig(matchingConfig.config_id);
+          }
+        }
+
+        // Show the config panel
+        setShowConfigPanel(true);
+      }
+
+      showSnackbar('Instructor file executed successfully. Expected output updated.', 'success');
+    } catch (error) {
+      console.error('Error executing instructor file:', error);
+      showSnackbar('Failed to execute instructor file: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+    } finally {
+      setExecutingFile(false);
+    }
+  };
+
+  const handleChangeConfig = async (configId: number) => {
+    setSelectedConfig(configId);
+    const selectedConf = configurations.find(c => c.config_id === configId);
+    if (selectedConf) {
+      setDetectedConfigPath(selectedConf.path);
+    }
+  };
+
+  const handleSaveNewConfig = async () => {
+    if (!detectedLanguage || !detectedConfigPath) {
+      showSnackbar('Missing language or path information', 'error');
+      return;
+    }
+
+    try {
+      // Check if this path already exists for this language
+      const existingConfig = configurations.find(
+        c => c.language_name === detectedLanguage && c.path === detectedConfigPath
+      );
+
+      if (existingConfig) {
+        // If configuration already exists, just select it
+        setSelectedConfig(existingConfig.config_id);
+        showSnackbar('Configuration already exists', 'info');
+        return;
+      }
+
+      // Create new configuration
+      const result = await createConfiguration({
+        language_name: detectedLanguage,
+        path: detectedConfigPath
+      });
+
+      // Refresh configurations and select the new one
+      await fetchConfigurations();
+      setSelectedConfig(result.config_id);
+      showSnackbar('Configuration saved successfully', 'success');
+    } catch (error) {
+      console.error('Failed to save configuration:', error);
+      showSnackbar('Failed to save configuration', 'error');
+    }
+  };
+
+  const handlePercentageChange = (_event: Event, newValue: number | number[]) => {
+    const value = Math.min(newValue as number, remainingPercentage);
+    handleChange('assignment_percent', value);
+  };
+
+  // File dialog handlers using Electron API
+  const handleInstructorZipBrowse = async () => {
+    if (window.electronAPI) {
+      const filePath = await window.electronAPI.selectFile({
+        filters: [{ name: 'ZIP Files', extensions: ['zip'] }]
+      });
+
+      if (filePath) {
+        handleChange('instructor_zip_path', filePath);
+      }
+    } else {
+      // Fallback for non-Electron environments
+      if (instructorZipInputRef.current) {
+        instructorZipInputRef.current.click();
+      }
+    }
+  };
+
+  const handleStudentFolderBrowse = async () => {
+    // Only enable student folder selection if instructor file is provided
+    if (!editedAssignment.instructor_zip_path) {
+      showSnackbar('Please select instructor file first', 'info');
+      return;
+    }
+
+    if (window.electronAPI) {
+      const folderPath = await window.electronAPI.selectDirectory();
+
+      if (folderPath) {
+        handleChange('student_submissions_path', folderPath);
+      }
+    } else {
+      // Fallback for non-Electron environments
+      if (studentFolderInputRef.current) {
+        studentFolderInputRef.current.click();
+      }
+    }
+  };
+
+  const handleInstructorZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0] as ElectronFile;
+      handleChange('instructor_zip_path', file.path || e.target.value);
+    }
+  };
+
+  const handleStudentFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0] as ElectronFile;
+      handleChange('student_submissions_path', file.path || e.target.value);
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 800, margin: '0 auto' }}>
       {/* Action Buttons */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'flex-end', 
-        mb: 2, 
-        gap: 1 
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        mb: 2,
+        gap: 1
       }}>
         {loading ? (
           <CircularProgress size={24} />
         ) : isEditing ? (
           <>
-            <Button 
-              variant="contained" 
-              color="primary" 
+            <Button
+              variant="contained"
+              color="primary"
               startIcon={<SaveIcon />}
               onClick={saveChanges}
             >
               Save
             </Button>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               startIcon={<CancelIcon />}
               onClick={cancelEditing}
             >
@@ -158,16 +414,16 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
           </>
         ) : (
           <>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               startIcon={<EditIcon />}
               onClick={startEditing}
             >
               Edit
             </Button>
-            <Button 
-              variant="outlined" 
-              color="error" 
+            <Button
+              variant="outlined"
+              color="error"
               startIcon={<DeleteIcon />}
               onClick={() => setDeleteDialogOpen(true)}
             >
@@ -211,27 +467,51 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
                   slotProps={{ textField: { variant: 'outlined', size: 'small' } }}
                 />
               </LocalizationProvider>
-              
-              <TextField
-                label="Grade %"
-                type="number"
-                value={editedAssignment.assignment_percent}
-                onChange={(e) => handleChange('assignment_percent', parseFloat(e.target.value))}
-                variant="outlined"
-                size="small"
-              />
+
+              {/* Assignment Percentage with remaining info */}
+              <Box sx={{ width: '100%', mt: 3, mb: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography id="assignment-percentage-slider" gutterBottom>
+                    Assignment Percentage
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color={remainingPercentage > 0 ? "text.secondary" : "error"}>
+                    {remainingPercentage === 0
+                      ? "No percentage remaining"
+                      : `${editedAssignment.assignment_percent}% (${remainingPercentage}% max)`}
+                  </Typography>
+                </Box>
+                <Slider
+                  value={editedAssignment.assignment_percent}
+                  onChange={handlePercentageChange}
+                  aria-labelledby="assignment-percentage-slider"
+                  valueLabelDisplay="auto"
+                  step={1}
+                  marks={[
+                    { value: 0, label: '0%' },
+                    { value: Math.min(25, remainingPercentage), label: `${Math.min(25, remainingPercentage)}%` },
+                    { value: Math.min(50, remainingPercentage), label: remainingPercentage >= 50 ? '50%' : '' },
+                    { value: Math.min(75, remainingPercentage), label: remainingPercentage >= 75 ? '75%' : '' },
+                    { value: remainingPercentage, label: `${remainingPercentage}%` }
+                  ]}
+                  disabled={remainingPercentage === 0}
+                  min={0}
+                  max={remainingPercentage}
+                />
+              </Box>
             </>
           ) : (
             <>
-              <Chip 
+              <Chip
                 icon={<CalendarTodayIcon />}
-                label={`Due: ${new Date(assignment.assignment_date).toLocaleDateString()}`} 
+                label={`Due: ${new Date(assignment.assignment_date).toLocaleDateString()}`}
                 variant="outlined"
                 color="primary"
               />
-              <Chip 
+              <Chip
                 icon={<PercentIcon />}
-                label={`${assignment.assignment_percent}% of Grade`} 
+                label={`${assignment.assignment_percent}% of Grade`}
                 color="secondary"
               />
             </>
@@ -254,12 +534,12 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
             <TextField
               fullWidth
               multiline
-              rows={4}  // Increased from 2 to 4 rows for better editing
+              rows={4}
               value={editedAssignment.args || ''}
               onChange={(e) => handleChange('args', e.target.value)}
               placeholder="Command line arguments (if any)"
               variant="outlined"
-              sx={{ 
+              sx={{
                 fontFamily: 'monospace',
                 '& .MuiOutlinedInput-root': {
                   '& textarea': {
@@ -270,21 +550,167 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
               }}
             />
           ) : (
-            <Paper 
-              variant="outlined" 
-              sx={{ 
-                p: 2, 
-                fontFamily: 'monospace', 
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                fontFamily: 'monospace',
                 bgcolor: 'grey.50',
                 whiteSpace: 'pre-wrap',
                 overflow: 'auto',
-                maxHeight: '200px'  // Added max height with scrolling like expected output
+                maxHeight: '200px'
               }}
             >
               {assignment.args && assignment.args.trim() !== '' ? assignment.args : 'None specified'}
             </Paper>
           )}
         </Box>
+
+        {/* Instructor ZIP file (only shown in edit mode) */}
+        {isEditing && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+              Instructor ZIP File
+            </Typography>
+            <TextField
+              label="Instructor ZIP File"
+              value={editedAssignment.instructor_zip_path || ''}
+              onChange={(e) => handleChange('instructor_zip_path', e.target.value)}
+              fullWidth
+              placeholder="Path to instructor's ZIP file"
+              helperText="Select the instructor's ZIP file containing reference solution"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="Browse for instructor ZIP file">
+                      <IconButton onClick={handleInstructorZipBrowse} edge="end">
+                        <FolderOpenIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Run instructor file to get expected output">
+                      <IconButton
+                        onClick={executeInstructorFileAndGetOutput}
+                        edge="end"
+                        color="primary"
+                        disabled={!editedAssignment.instructor_zip_path || executingFile}
+                      >
+                        {executingFile ? <CircularProgress size={24} /> : <PlayArrowIcon />}
+                      </IconButton>
+                    </Tooltip>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <input
+              type="file"
+              accept=".zip"
+              ref={instructorZipInputRef}
+              style={{ display: 'none' }}
+              onChange={handleInstructorZipChange}
+            />
+          </Box>
+        )}
+
+        {/* Detected Language Config Panel (only shown in edit mode) */}
+        {isEditing && showConfigPanel && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+              Language Configuration
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 2, mt: 1, mb: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Detected Language: <strong>{detectedLanguage}</strong>
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                {/* Select existing configuration */}
+                <FormControl size="small" fullWidth>
+                  <InputLabel id="config-select-label">Configuration</InputLabel>
+                  <Select
+                    labelId="config-select-label"
+                    value={selectedConfig || ''}
+                    label="Configuration"
+                    onChange={(e) => handleChangeConfig(e.target.value as number)}
+                  >
+                    <MenuItem value="">
+                      <em>Select a configuration</em>
+                    </MenuItem>
+                    {configurations
+                      .filter(config => config.language_name === detectedLanguage)
+                      .map(config => (
+                        <MenuItem key={config.config_id} value={config.config_id}>
+                          {config.path}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                  <FormHelperText>Choose a saved configuration</FormHelperText>
+                </FormControl>
+
+                {/* Edit or create new configuration */}
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                  <TextField
+                    label="Configuration Path"
+                    size="small"
+                    fullWidth
+                    value={detectedConfigPath || ''}
+                    onChange={(e) => setDetectedConfigPath(e.target.value)}
+                    placeholder="Path to compiler/interpreter"
+                  />
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleSaveNewConfig}
+                    disabled={!detectedLanguage || !detectedConfigPath}
+                  >
+                    Save
+                  </Button>
+                </Box>
+              </Box>
+            </Paper>
+          </Box>
+        )}
+
+        {/* Student submissions folder (only shown in edit mode) */}
+        {isEditing && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+              Student Submissions Folder
+            </Typography>
+            <TextField
+              label="Student Submissions Folder"
+              value={editedAssignment.student_submissions_path || ''}
+              onChange={(e) => handleChange('student_submissions_path', e.target.value)}
+              fullWidth
+              disabled={!editedAssignment.instructor_zip_path}
+              placeholder="Path to folder with student ZIP submissions"
+              helperText={editedAssignment.instructor_zip_path
+                ? "Select the folder containing student ZIP submissions"
+                : "Please select instructor file first"
+              }
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={handleStudentFolderBrowse}
+                      edge="end"
+                      disabled={!editedAssignment.instructor_zip_path}
+                    >
+                      <FolderOpenIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <input
+              type="file"
+              data-webkitdirectory="true"
+              data-directory=""
+              ref={studentFolderInputRef}
+              style={{ display: 'none' }}
+              onChange={handleStudentFolderChange}
+            />
+          </Box>
+        )}
 
         {/* Expected Output */}
         <Box sx={{ mt: 3 }}>
