@@ -435,21 +435,10 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
 
       {/* Main Content */}
       <Paper sx={{ p: 4, borderRadius: 1 }}>
-        {/* Header */}
-        {isEditing ? (
-          <TextField
-            fullWidth
-            label="Assignment Name"
-            value={editedAssignment.assignment_name}
-            onChange={(e) => handleChange('assignment_name', e.target.value)}
-            variant="outlined"
-            sx={{ mb: 2 }}
-          />
-        ) : (
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 500 }}>
-            {assignment.assignment_name}
-          </Typography>
-        )}
+        {/* Header - Assignment name is not editable */}
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 500 }}>
+          {assignment.assignment_name}
+        </Typography>
 
         {/* Info Chips */}
         <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
