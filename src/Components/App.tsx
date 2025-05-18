@@ -64,7 +64,9 @@ const App = () => {
 
       setIsDataLoading(true);
       try {
+        console.log("Fetching assignments...");
         const data = await getAllAssignments();
+
         setAssignments(data.map(assignment => ({
           ...assignment,
           args: assignment.args ?? undefined,
@@ -74,21 +76,26 @@ const App = () => {
         if (selectedAssignment) {
           const updated = data.find(a => a.assignment_no === selectedAssignment.assignment_no);
           if (updated) {
-            setSelectedAssignment({
-              ...updated,
-              args: updated.args ?? undefined,
-            });
+            // Use setTimeout to ensure we don't update state too quickly
+            setTimeout(() => {
+              setSelectedAssignment({
+                ...updated,
+                args: updated.args ?? undefined,
+              });
+            }, 100);
           }
         }
+        console.log("Assignments fetched successfully");
       } catch (error) {
         console.error('Failed to fetch assignments:', error);
       } finally {
-        setIsDataLoading(false);
+        // Use a slight delay to prevent UI flashing
+        setTimeout(() => setIsDataLoading(false), 300);
       }
     };
 
     fetchAssignments();
-  }, [refreshTrigger, isLoading, selectedAssignment]);
+  }, [refreshTrigger, isLoading]); // Removed selectedAssignment from dependencies to avoid loops
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -104,25 +111,49 @@ const App = () => {
   };
 
   const handleAssignmentClick = (assignment: AssignmentType) => {
-    setSelectedAssignment(assignment);
-    setCurrentView('details');
-    // On mobile, close the sidebar after selection
-    if (window.innerWidth < 768) {
-      setSidebarOpen(false);
+    console.log("Assignment clicked:", assignment.assignment_name);
+
+    // First finish any current data loading
+    if (isDataLoading) {
+      console.log("Waiting for current data loading to complete");
+      setTimeout(() => handleAssignmentClick(assignment), 300);
+      return;
     }
+
+    // Set loading flag
+    setIsDataLoading(true);
+
+    // Use a slight delay to ensure state updates properly
+    setTimeout(() => {
+      setSelectedAssignment(assignment);
+      setCurrentView('details');
+      setIsDataLoading(false);
+
+      // On mobile, close the sidebar after selection
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false);
+      }
+    }, 300);
   };
 
   const refreshAssignments = useCallback(() => {
+    console.log("Refreshing assignments...");
     setRefreshTrigger(prev => prev + 1);
   }, []);
 
   const handleAssignmentUpdate = useCallback(() => {
+    console.log("Assignment updated, refreshing data...");
     refreshAssignments();
   }, [refreshAssignments]);
 
   const handleAssignmentDelete = useCallback(() => {
+    console.log("Assignment deleted, refreshing data...");
     setSelectedAssignment(null);
-    refreshAssignments();
+    setCurrentView('home');
+    // Use setTimeout to ensure state updates properly
+    setTimeout(() => {
+      refreshAssignments();
+    }, 300);
   }, [refreshAssignments]);
 
   const handleMenuItemClick = (path: string) => {

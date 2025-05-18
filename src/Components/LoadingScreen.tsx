@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Box, CircularProgress, Typography, LinearProgress } from '@mui/material';
+import {
+  Box, CircularProgress, Typography, LinearProgress,
+  Backdrop
+} from '@mui/material';
 
 interface LoadingScreenProps {
   message?: string;
+  overlay?: boolean;
 }
 
-const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Loading application...' }) => {
+const LoadingScreen: React.FC<LoadingScreenProps> = ({
+  message = 'Loading application...',
+  overlay = false
+}) => {
   const [dots, setDots] = useState('');
-  const [progress, setProgress] = useState(0);
 
   // Animated dots for loading message
   useEffect(() => {
@@ -18,19 +24,36 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Loading applic
     return () => clearInterval(interval);
   }, []);
 
-  // Simulated progress bar
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        // Slow down progress as it gets higher to simulate waiting for API
-        const increment = Math.max(1, Math.floor((100 - prev) / 10));
-        return Math.min(95, prev + increment); // Never reach 100% until actually loaded
-      });
-    }, 300);
+  // Main loading content
+  const content = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <CircularProgress size={overlay ? 40 : 60} thickness={4} />
+      <Typography variant={overlay ? "body1" : "h6"} sx={{ mt: 2, color: overlay ? 'white' : 'inherit' }}>
+        {message}{dots}
+      </Typography>
+      <Box sx={{ width: '100%', maxWidth: 300, mt: 2 }}>
+        <LinearProgress />
+      </Box>
+    </Box>
+  );
 
-    return () => clearInterval(interval);
-  }, []);
+  // If overlay mode is requested, use a Backdrop component
+  if (overlay) {
+    return (
+      <Backdrop
+        sx={{
+          color: '#fff',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)'
+        }}
+        open={true}
+      >
+        {content}
+      </Backdrop>
+    );
+  }
 
+  // Otherwise use a full-screen fixed position container
   return (
     <Box
       sx={{
@@ -47,13 +70,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Loading applic
         zIndex: 9999,
       }}
     >
-      <CircularProgress size={60} thickness={4} />
-      <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-        {message}{dots}
-      </Typography>
-      <Box sx={{ width: '50%', maxWidth: 300 }}>
-        <LinearProgress variant="determinate" value={progress} />
-      </Box>
+      {content}
     </Box>
   );
 };

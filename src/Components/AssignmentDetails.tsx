@@ -5,7 +5,8 @@ import {
   Dialog, DialogActions, DialogContent, DialogTitle,
   Snackbar, Alert, CircularProgress,
   InputAdornment, IconButton, Tooltip,
-  Slider, FormControl, InputLabel, Select, MenuItem, FormHelperText
+  Slider, FormControl, InputLabel, Select, MenuItem, FormHelperText,
+  LinearProgress
 } from '@mui/material';
 import {
   CalendarToday as CalendarTodayIcon,
@@ -15,7 +16,8 @@ import {
   Cancel as CancelIcon,
   DeleteOutline as DeleteIcon,
   FolderOpen as FolderOpenIcon,
-  PlayArrow as PlayArrowIcon
+  PlayArrow as PlayArrowIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
@@ -67,7 +69,7 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedAssignment, setEditedAssignment] = useState<AssignmentType>({...assignment});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [executingFile, setExecutingFile] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -84,10 +86,46 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
   const [configurations, setConfigurations] = useState<Configuration[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<number | null>(null);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // References for the hidden file inputs
   const instructorZipInputRef = useRef<HTMLInputElement>(null);
   const studentFolderInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize edit assignment state from props with safety timeout
+  useEffect(() => {
+    console.log("Assignment details initializing with assignment:", assignment.assignment_name);
+
+    // Set loading state
+    setLoading(true);
+    setLoadError(null);
+
+    // Set a fallback timeout in case something goes wrong
+    const fallbackTimer = setTimeout(() => {
+      if (loading) {
+        console.log("Loading fallback triggered");
+        setLoading(false);
+      }
+    }, 3000);
+
+    // Load assignment data with a short timeout to ensure UI updates
+    const timer = setTimeout(() => {
+      try {
+        setEditedAssignment({...assignment});
+        setLoading(false);
+        console.log("Assignment details loaded successfully");
+      } catch (error) {
+        console.error("Error initializing assignment details:", error);
+        setLoadError("Error loading assignment details");
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+    };
+  }, [assignment]); // Only run when assignment changes
 
   // Fetch assignments to calculate remaining percentage and configurations
   useEffect(() => {
@@ -98,7 +136,6 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
   }, [isEditing]);
 
   const fetchAssignments = async () => {
-    setLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/assignments/`);
       if (response.ok) {
@@ -110,17 +147,15 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
           0
         );
 
-        // Calculate remaining percentage
-        const remaining = Math.max(0, 100 - totalAllocated);
-        setRemainingPercentage(remaining + editedAssignment.assignment_percent);
+        // Calculate remaining percentage - ensure it's capped at 100%
+        const remaining = Math.min(100, Math.max(0, 100 - totalAllocated));
+        setRemainingPercentage(remaining + (editedAssignment.assignment_percent || 0));
       } else {
         throw new Error('Failed to fetch assignments');
       }
     } catch (error) {
       console.error('Error fetching assignments:', error);
       showSnackbar('Failed to calculate remaining percentage', 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -231,6 +266,24 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
     }
   };
 
+  const handleRetry = () => {
+    console.log("Retrying assignment load");
+    setLoading(true);
+    setLoadError(null);
+
+    // Retry loading the assignment with a timeout
+    setTimeout(() => {
+      try {
+        setEditedAssignment({...assignment});
+        setLoading(false);
+      } catch (error) {
+        console.error("Error retrying assignment load:", error);
+        setLoadError("Error loading assignment details");
+        setLoading(false);
+      }
+    }, 300);
+  };
+
   // Execute instructor file and set output as expected output
   const executeInstructorFileAndGetOutput = async () => {
     // Check if instructor path is valid
@@ -326,7 +379,9 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
   };
 
   const handlePercentageChange = (_event: Event, newValue: number | number[]) => {
-    const value = Math.min(newValue as number, remainingPercentage);
+    // Ensure the value doesn't exceed 100%
+    const maxAllowed = Math.min(100, remainingPercentage);
+    const value = Math.min(newValue as number, maxAllowed);
     handleChange('assignment_percent', value);
   };
 
@@ -383,6 +438,69 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
     }
   };
 
+  // Show loading state
+  if (loading) {
+    return (
+      <Box sx={{ width: '100%', mt: 4, textAlign: 'center' }}>
+        <Typography variant="h6" color="textSecondary" gutterBottom>
+          Loading data...
+        </Typography>
+        <LinearProgress sx={{ maxWidth: 500, mx: 'auto', mt: 2 }} />
+
+        {/* Add a fallback retry button that appears after 5 seconds if still loading */}
+        <Box
+          sx={{
+            mt: 4,
+            opacity: 0.8,
+            animation: 'fadeIn 1s ease-in-out',
+            '@keyframes fadeIn': {
+              '0%': { opacity: 0 },
+              '100%': { opacity: 0.8 }
+            },
+            animationDelay: '5s',
+            animationFillMode: 'forwards',
+            visibility: 'hidden'
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Taking longer than expected...
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleRetry}
+            startIcon={<RefreshIcon />}
+            sx={{
+              mt: 1,
+              visibility: 'visible'
+            }}
+          >
+            Retry
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Show error state with retry button
+  if (loadError) {
+    return (
+      <Box sx={{ width: '100%', mt: 4, textAlign: 'center' }}>
+        <Typography variant="h6" color="error" gutterBottom>
+          {loadError}
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={handleRetry}
+          startIcon={<RefreshIcon />}
+          sx={{ mt: 2 }}
+        >
+          Retry Loading
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ maxWidth: 800, margin: '0 auto' }}>
       {/* Action Buttons */}
@@ -433,7 +551,7 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
         )}
       </Box>
 
-      {/* Main Content */}
+      {/* Main Content - Using your original component structure */}
       <Paper sx={{ p: 4, borderRadius: 1 }}>
         {/* Header - Assignment name is not editable */}
         <Typography variant="h4" gutterBottom sx={{ fontWeight: 500 }}>
@@ -441,24 +559,26 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
         </Typography>
 
         {/* Info Chips */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
           {isEditing ? (
             <>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Due Date"
-                  value={new Date(editedAssignment.assignment_date)}
-                  onChange={(newValue) => {
-                    if (newValue) {
-                      handleChange('assignment_date', newValue.toISOString().split('T')[0]);
-                    }
-                  }}
-                  slotProps={{ textField: { variant: 'outlined', size: 'small' } }}
-                />
-              </LocalizationProvider>
+              <Box>
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                  <DatePicker
+                    label="Due Date"
+                    value={new Date(editedAssignment.assignment_date)}
+                    onChange={(newValue) => {
+                      if (newValue) {
+                        handleChange('assignment_date', newValue.toISOString().split('T')[0]);
+                      }
+                    }}
+                    slotProps={{ textField: { variant: 'outlined', fullWidth: true } }}
+                  />
+                </LocalizationProvider>
+              </Box>
 
               {/* Assignment Percentage with remaining info */}
-              <Box sx={{ width: '100%', mt: 3, mb: 1 }}>
+              <Box sx={{ width: '100%', mt: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography id="assignment-percentage-slider" gutterBottom>
                     Assignment Percentage
@@ -468,7 +588,7 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
                     color={remainingPercentage > 0 ? "text.secondary" : "error"}>
                     {remainingPercentage === 0
                       ? "No percentage remaining"
-                      : `${editedAssignment.assignment_percent}% (${remainingPercentage}% max)`}
+                      : `${editedAssignment.assignment_percent}% (${Math.min(100, remainingPercentage)}% max)`}
                   </Typography>
                 </Box>
                 <Slider
@@ -482,11 +602,11 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
                     { value: Math.min(25, remainingPercentage), label: `${Math.min(25, remainingPercentage)}%` },
                     { value: Math.min(50, remainingPercentage), label: remainingPercentage >= 50 ? '50%' : '' },
                     { value: Math.min(75, remainingPercentage), label: remainingPercentage >= 75 ? '75%' : '' },
-                    { value: remainingPercentage, label: `${remainingPercentage}%` }
+                    { value: Math.min(100, remainingPercentage), label: `${Math.min(100, remainingPercentage)}%` }
                   ]}
                   disabled={remainingPercentage === 0}
                   min={0}
-                  max={remainingPercentage}
+                  max={Math.min(100, remainingPercentage)}
                 />
               </Box>
             </>
@@ -714,22 +834,22 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
               value={editedAssignment.correct_output}
               onChange={(e) => handleChange('correct_output', e.target.value)}
               variant="outlined"
-              sx={{ 
+              sx={{
                 fontFamily: 'monospace',
                 '& .MuiOutlinedInput-root': {
                   '& textarea': {
                     overflowY: 'auto',
                     maxHeight: '300px'
                   }
-                } 
+                }
               }}
             />
           ) : (
-            <Paper 
-              variant="outlined" 
-              sx={{ 
-                p: 2, 
-                fontFamily: 'monospace', 
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                fontFamily: 'monospace',
                 bgcolor: 'grey.50',
                 whiteSpace: 'pre-wrap',
                 overflow: 'auto',
@@ -760,14 +880,14 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
       </Dialog>
 
       {/* Snackbar for notifications */}
-      <Snackbar 
+      <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000} 
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={handleCloseSnackbar} 
+        <Alert
+          onClose={handleCloseSnackbar}
           severity={snackbar.severity}
         >
           {snackbar.message}
