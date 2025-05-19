@@ -168,6 +168,15 @@ class AssignmentController:
         results = {}
         student_data = {}
 
+        # Check if student submissions path has changed
+        path_file = os.path.join(assignment_dir, "student_submissions_path.txt")
+        student_submissions_changed = True
+        
+        if os.path.exists(path_file):
+            with open(path_file, 'r') as f:
+                previous_path = f.read().strip()
+                student_submissions_changed = previous_path != request.student_submissions_path
+        
         # Extract instructor ZIP if provided
         if request.instructor_zip_path and os.path.exists(request.instructor_zip_path):
             instructor_dir = os.path.join(assignment_dir, "instructor")
@@ -186,7 +195,19 @@ class AssignmentController:
         # Extract student submissions if path provided
         if request.student_submissions_path and os.path.exists(request.student_submissions_path):
             student_dir = os.path.join(assignment_dir, "student_submissions")
+            
+            # If student submissions path has changed, remove the old directory
+            if student_submissions_changed and os.path.exists(student_dir):
+                import shutil
+                print(f"Student submissions path changed. Removing old directory: {student_dir}")
+                shutil.rmtree(student_dir)
+            
+            # Create the directory (or recreate if it was removed)
             os.makedirs(student_dir, exist_ok=True)
+
+            # Save the current path for future reference
+            with open(path_file, 'w') as f:
+                f.write(request.student_submissions_path)
 
             # Initialize the ZipExtractor with the student submissions directory
             extractor = ZipExtractor(
