@@ -118,9 +118,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { text: 'Assignment Reports', icon: <ScoreIcon />, path: 'scores' },
     { text: 'Student Reports', icon: <PeopleIcon />, path: 'student-reports' }, // Added new menu item
-    { text: 'Reports', icon: <ReportIcon />, path: 'reports' },
-    { text: 'Files', icon: <FolderIcon />, path: 'files' },
-    { text: 'Settings', icon: <SettingsIcon />, path: 'settings' },
+    //Removed the items.
+    //{ text: 'Reports', icon: <ReportIcon />, path: 'reports' },
+    //{ text: 'Files', icon: <FolderIcon />, path: 'files' },
+    //{ text: 'Settings', icon: <SettingsIcon />, path: 'settings' },
   ];
 
   const renderAssignmentsList = () => {
