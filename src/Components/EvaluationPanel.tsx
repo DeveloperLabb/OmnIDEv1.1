@@ -56,7 +56,7 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ assignments, refreshA
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error';
+    severity: 'success' | 'error' | 'warning' | 'info';
   }>({
     open: false,
     message: '',
@@ -68,19 +68,81 @@ const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ assignments, refreshA
     setResults([]);
     
     try {
+      // If specific assignment is selected, check if it has submission files
+      if (selectedAssignment) {
+        // Get the selected assignment
+        const assignment = assignments.find(a => a.assignment_no === selectedAssignment);
+        
+        // If we found the assignment, check if its folder exists in defaultExtractLocation
+        if (assignment) {
+          // Verify if the submission folder exists
+          const folderCheckResponse = await fetch(`http://localhost:8000/api/assignments/${selectedAssignment}/student-submissions`);
+          const folderData = await folderCheckResponse.json();
+          
+          if (!folderData.students || folderData.students.length === 0) {
+            const assignmentName = assignment.assignment_name || `Assignment #${assignment.assignment_no}`;
+            showSnackbar(`No submission files found for "${assignmentName}". Please add student submissions folder for this assignment first.`, 'error');
+            setLoading(false);
+            return;
+          }
+        }
+      } else {
+        // For "All Assignments" option, check each assignment and collect errors
+        const missingSubmissions: string[] = [];
+        
+        // Check each assignment for submission files
+        for (const assignment of assignments) {
+          try {
+            const folderCheckResponse = await fetch(`http://localhost:8000/api/assignments/${assignment.assignment_no}/student-submissions`);
+            const folderData = await folderCheckResponse.json();
+            
+            if (!folderData.students || folderData.students.length === 0) {
+              const assignmentName = assignment.assignment_name || `Assignment #${assignment.assignment_no}`;
+              missingSubmissions.push(assignmentName);
+            }
+          } catch (error) {
+            const assignmentName = assignment.assignment_name || `Assignment #${assignment.assignment_no}`;
+            missingSubmissions.push(assignmentName);
+          }
+        }
+        
+        // If there are assignments with missing submissions, show warning
+        if (missingSubmissions.length > 0) {
+          showSnackbar(
+            `Warning: The following assignments have no submission files: ${missingSubmissions.join(', ')}. Only assignments with submissions will be evaluated.`, 
+            'warning'
+          );
+        }
+      }
+
+      // Continue with evaluation if checks pass
       const data = await evaluateSubmissions({
         assignment_no: selectedAssignment || undefined
       });
-      setResults(data);
-      showSnackbar('Evaluation completed successfully', 'success');
+      
+      if (data.length > 0) {
+        setResults(data);
+        showSnackbar('Evaluation completed successfully', 'success');
+      } else {
+        showSnackbar('No submissions were evaluated. Make sure your assignments have student submissions folders.', 'warning');
+      }
     } catch (err) {
-      showSnackbar('Evaluation process failed', 'error');
+      // Check if the error is about missing files
+      if (err instanceof Error && err.message.includes('No student submissions found')) {
+        const assignmentName = selectedAssignment ? 
+          (assignments.find(a => a.assignment_no === selectedAssignment)?.assignment_name || `Assignment #${selectedAssignment}`) : 
+          'selected assignment';
+        
+        showSnackbar(`No submission files found for "${assignmentName}". Please add student submissions folder for this assignment first in the assignment edit section.`, 'error');
+      } else {
+        showSnackbar('Evaluation process failed', 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
-  
-  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setSnackbar({
       open: true,
       message,
