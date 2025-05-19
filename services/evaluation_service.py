@@ -15,6 +15,7 @@ class EvaluationService:
     def evaluate_specific_assignment(self, assignment_no: int, base_dir: str) -> List[Dict[str, Any]]:
         """
         Evaluate submissions for a specific assignment.
+        First deletes all existing scores for this assignment, then evaluates and saves new scores.
 
         Args:
             assignment_no: The assignment number
@@ -28,12 +29,24 @@ class EvaluationService:
         if not assignment:
             raise ValueError(f"Assignment {assignment_no} not found")
 
+        print(f"Starting evaluation for assignment {assignment_no}: {assignment.assignment_name}")
+        
+        # Delete all existing scores for this assignment
+        try:
+            deleted_count = self.db.query(Score).filter(Score.assignment_no == assignment_no).delete()
+            self.db.commit()
+            print(f"Deleted {deleted_count} existing score records for assignment {assignment_no}")
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error cleaning up existing scores: {str(e)}")
+
         # Get the expected output
         expected_output = assignment.correct_output.strip()
 
         # Get the assignment directory
         assignment_dir = os.path.join(base_dir, assignment.assignment_name)
         if not os.path.exists(assignment_dir):
+            print(f"Assignment directory does not exist: {assignment_dir}")
             return []
 
         # Load student mappings if available
@@ -42,6 +55,7 @@ class EvaluationService:
         # Get student submissions directory
         student_submissions_dir = os.path.join(assignment_dir, "student_submissions")
         if not os.path.exists(student_submissions_dir):
+            print(f"Student submissions directory does not exist: {student_submissions_dir}")
             return []
 
         # Find all student directories
@@ -56,6 +70,7 @@ class EvaluationService:
 
             if not student_id:
                 # Skip if we can't determine a student ID
+                print(f"Skipping directory {student_dir}: Could not determine student ID")
                 continue
 
             # Try to convert student_id to integer if it's a number
@@ -64,6 +79,7 @@ class EvaluationService:
             except ValueError:
                 # Use a hash of the string if it's not a valid integer
                 student_id_int = hash(student_id) % 10000000
+                print(f"Using hash value {student_id_int} for student ID: {student_id}")
 
             # Find the student's submission files
             submission_path = os.path.join(student_submissions_dir, student_dir)
@@ -81,15 +97,30 @@ class EvaluationService:
             }
 
             # Store the score in the database
-            self._update_score(student_id_int, assignment_no, 100.0 if matched else 0.0)
+            # Since we've deleted all existing scores for this assignment,
+            # we only need to create new records (no need to check for existing ones)
+            try:
+                new_score = Score(
+                    student_id=student_id_int,
+                    assignment_no=assignment_no,
+                    score=100.0 if matched else 0.0
+                )
+                self.db.add(new_score)
+                self.db.commit()
+            except Exception as e:
+                self.db.rollback()
+                print(f"Error creating score record for student {student_id_int}: {str(e)}")
 
             results.append(result)
 
+        print(f"Evaluation completed for assignment {assignment_no}. Processed {len(results)} submissions.")
+        
         return results
 
     def evaluate_all_assignments(self, base_dir: str) -> List[Dict[str, Any]]:
         """
         Evaluate submissions for all assignments.
+        First deletes all existing scores, then evaluates and saves new scores.
 
         Args:
             base_dir: The base directory containing the extracted submissions
@@ -100,10 +131,21 @@ class EvaluationService:
         # Get all assignments
         assignments = self.db.query(Assignment).all()
 
+        # Delete all scores from the database
+        try:
+            deleted_count = self.db.query(Score).delete()
+            self.db.commit()
+            print(f"Deleted all {deleted_count} existing score records")
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error cleaning up existing scores: {str(e)}")
+
         all_results = []
 
         # Evaluate each assignment
         for assignment in assignments:
+            # Since we've already deleted all scores, we don't need to delete them again
+            # But we need to pass a flag to indicate this
             results = self.evaluate_specific_assignment(assignment.assignment_no, base_dir)
             all_results.extend(results)
 
