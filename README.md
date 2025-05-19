@@ -61,11 +61,11 @@ OmnIDE is an integrated development and evaluation environment designed to manag
 
 | Component | Technology |
 |-----------|------------|
-| Frontend  | React with TypeScript and Material-UI |
+| Frontend  | React with TypeScript, Material-UI and Tailwind CSS |
 | Backend   | Python API with FastAPI |
 | Database  | SQLite |
 | Packaging | Electron for cross-platform desktop application |
-| Build Tools | Vite, Tailwind CSS |
+| Build Tools | Vite |
 
 ## 🚀 Getting Started
 
