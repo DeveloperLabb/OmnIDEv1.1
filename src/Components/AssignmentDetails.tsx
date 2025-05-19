@@ -141,15 +141,30 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
       if (response.ok) {
         const assignments: AssignmentType[] = await response.json();
 
-        // Calculate total percentage already allocated
+        // Calculate total percentage already allocated (excluding current assignment)
         const totalAllocated = assignments.reduce(
           (sum, a) => sum + (a.assignment_no === assignment.assignment_no ? 0 : a.assignment_percent),
           0
         );
 
-        // Calculate remaining percentage - ensure it's capped at 100%
-        const remaining = Math.min(100, Math.max(0, 100 - totalAllocated));
-        setRemainingPercentage(remaining + (editedAssignment.assignment_percent || 0));
+        // Calculate remaining percentage
+        const remaining = 100 - totalAllocated;
+        
+        // Set the remaining percentage and adjust the assignment's current percentage if needed
+        setRemainingPercentage(remaining);
+        
+        // If current edited percentage is higher than remaining, cap it
+        if (editedAssignment.assignment_percent > remaining) {
+          setEditedAssignment({
+            ...editedAssignment,
+            assignment_percent: remaining
+          });
+          
+          // Show a warning if we had to adjust the percentage
+          if (editedAssignment.assignment_percent !== remaining) {
+            showSnackbar(`Assignment percentage was adjusted to maximum available: ${remaining}%`, 'warning');
+          }
+        }
       } else {
         throw new Error('Failed to fetch assignments');
       }
@@ -413,9 +428,8 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
   };
 
   const handlePercentageChange = (_event: Event, newValue: number | number[]) => {
-    // Ensure the value doesn't exceed 100%
-    const maxAllowed = Math.min(100, remainingPercentage);
-    const value = Math.min(newValue as number, maxAllowed);
+    // Ensure the value doesn't exceed remaining percentage
+    const value = Math.min(newValue as number, remainingPercentage);
     handleChange('assignment_percent', value);
   };
 
@@ -620,9 +634,9 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
                   <Typography
                     variant="body2"
                     color={remainingPercentage > 0 ? "text.secondary" : "error"}>
-                    {remainingPercentage === 0
+                    {remainingPercentage <= 0
                       ? "No percentage remaining"
-                      : `${editedAssignment.assignment_percent}% (${Math.min(100, remainingPercentage)}% max)`}
+                      : `${editedAssignment.assignment_percent}% (${remainingPercentage}% max)`}
                   </Typography>
                 </Box>
                 <Slider
@@ -638,7 +652,7 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
                     { value: Math.min(75, remainingPercentage), label: remainingPercentage >= 75 ? '75%' : '' },
                     { value: Math.min(100, remainingPercentage), label: `${Math.min(100, remainingPercentage)}%` }
                   ]}
-                  disabled={remainingPercentage === 0}
+                  disabled={remainingPercentage <= 0}
                   min={0}
                   max={Math.min(100, remainingPercentage)}
                 />
