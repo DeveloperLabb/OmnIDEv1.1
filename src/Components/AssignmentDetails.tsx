@@ -229,9 +229,17 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
       };
 
       await updateAssignment(assignment.assignment_no, formattedData);
+
+      // If paths are provided, extract the ZIP files
+      if (editedAssignment.instructor_zip_path || editedAssignment.student_submissions_path) {
+        await extractZipFiles(assignment.assignment_no, editedAssignment.assignment_name);
+        showSnackbar('Assignment updated with files extracted successfully!', 'success');
+      } else {
+        showSnackbar('Assignment updated successfully!', 'success');
+      }
+
       setIsEditing(false);
       setShowConfigPanel(false);
-      showSnackbar('Assignment updated successfully!', 'success');
 
       // Trigger refresh in parent component
       if (onAssignmentUpdate) {
@@ -242,6 +250,32 @@ const AssignmentDetails: React.FC<AssignmentDetailsProps> = ({
       showSnackbar(`Failed to update: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const extractZipFiles = async (assignmentNo: number, assignmentName: string) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/assignments/${assignmentNo}/extract-zip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          instructor_zip_path: editedAssignment.instructor_zip_path || '',
+          student_submissions_path: editedAssignment.student_submissions_path || '',
+          assignment_name: assignmentName
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to extract ZIP files');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error extracting ZIP files:', error);
+      throw error;
     }
   };
 
