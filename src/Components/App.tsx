@@ -214,7 +214,10 @@ const App = () => {
         ) : (
           <Fade in={true} timeout={500}>
             <div>
-              <EvaluationPanel />
+              <EvaluationPanel 
+                assignments={assignments}
+                refreshAssignments={refreshAssignments}
+              />
             </div>
           </Fade>
         )}

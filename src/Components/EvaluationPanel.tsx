@@ -27,7 +27,7 @@ import {
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { evaluateSubmissions, getAllAssignments } from '../services/api';
+import { evaluateSubmissions } from '../services/api';
 
 interface Assignment {
   assignment_no: number;
@@ -44,10 +44,14 @@ interface EvaluationResult {
   expected_output?: string;
 }
 
-const EvaluationPanel: React.FC = () => {
+interface EvaluationPanelProps {
+  assignments: Assignment[];
+  refreshAssignments: () => void;
+}
+
+const EvaluationPanel: React.FC<EvaluationPanelProps> = ({ assignments, refreshAssignments }) => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<EvaluationResult[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -58,21 +62,7 @@ const EvaluationPanel: React.FC = () => {
     message: '',
     severity: 'success'
   });
-  
-  // Fetch assignments when component mounts
-  useEffect(() => {
-    fetchAssignments();
-  }, []);
-  
-  const fetchAssignments = async () => {
-    try {
-      const data = await getAllAssignments();
-      setAssignments(data);
-    } catch (err) {
-      showSnackbar('Failed to load assignments', 'error');
-    }
-  };
-  
+
   const handleEvaluate = async () => {
     setLoading(true);
     setResults([]);
