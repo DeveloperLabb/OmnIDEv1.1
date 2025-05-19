@@ -9,6 +9,12 @@ import StudentScores from './StudentScores';
 import LoadingScreen from './LoadingScreen';
 import { getAllAssignments } from '../services/api';
 
+declare global {
+  interface Window {
+    apiReady?: boolean;
+  }
+}
+
 interface AssignmentType {
   assignment_no: number;
   assignment_name: string;
