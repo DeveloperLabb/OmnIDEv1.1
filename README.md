@@ -16,8 +16,12 @@ OmnIDE is an integrated development and evaluation environment designed to manag
 - Import student submissions in ZIP format
 - Track assignment progress and results
 - Define expected outputs for automated evaluation
-
-![Assignment Management]()
+![Assignment Management](docs/img/A1.png)
+&nbsp;
+![Assignment Management](docs/img/A2.png)
+&nbsp;
+![Assignment Management](docs/img/A3.png)
+&nbsp;
 
 ### Configuration Management
 - Create language configurations with:
@@ -28,8 +32,10 @@ OmnIDE is an integrated development and evaluation environment designed to manag
   - Java, C, C++, Python, JavaScript, C#, Go
 - Import/export configurations between systems
 - Reuse configurations across assignments
-
-![Configuration Management]()
+![Configuration Management](docs/img/C1.png)
+&nbsp;
+![Configuration Management](docs/img/C2.png)
+&nbsp;
 
 ### Evaluation System
 - Batch process student submissions
@@ -37,8 +43,8 @@ OmnIDE is an integrated development and evaluation environment designed to manag
 - Compare outputs with reference solutions
 - Score assignments based on output matching
 - View detailed evaluation results
-
-![Evaluation System]()
+![Evaluation System](docs/img/E1.png)
+&nbsp;
 
 ### Result Tracking
 - View student scores across assignments
@@ -46,8 +52,10 @@ OmnIDE is an integrated development and evaluation environment designed to manag
 - Examine individual submission details
 - Export results for grading systems
 - View statistical summaries of class performance
-
-![Result Tracking]()
+![Result Tracking](docs/img/R1.png)
+&nbsp;
+![Result Tracking](docs/img/R2.png)
+&nbsp;
 
 ## 🛠️ Technology Stack
 
@@ -105,6 +113,9 @@ You can reach the latest setup file at the releases section.
 
 ## 📚 Documentation
 For more detailed information, click the Help icon in the application to access the built-in user manual.
+
+## Documents
+[Link to the Design Document(PDF)](./docs/OmnIDE_Design_Doc.pdf)
 
 ## Contributors
 - Mert Koğuş "DeveloperLabb"
