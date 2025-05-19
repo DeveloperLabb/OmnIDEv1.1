@@ -163,8 +163,12 @@ const App = () => {
   }, [refreshAssignments]);
 
   const handleMenuItemClick = (path: string) => {
-    setCurrentView(path);
+    // Close any open detail views
     setSelectedAssignment(null);
+    
+    // Set the current view based on path
+    setCurrentView(path);
+    
     // On mobile, close the sidebar after selection
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -207,6 +211,11 @@ const App = () => {
           <AssignmentScores />
         ) : currentView === 'student-reports' ? (
           <StudentScores />
+        ) : currentView === 'evaluation' ? (
+          <EvaluationPanel 
+            assignments={assignments}
+            refreshAssignments={refreshAssignments}
+          />
         ) : selectedAssignment ? (
           <Fade in={true} timeout={500}>
             <div>
@@ -218,6 +227,7 @@ const App = () => {
             </div>
           </Fade>
         ) : (
+          // Default home view
           <Fade in={true} timeout={500}>
             <div>
               <EvaluationPanel 
