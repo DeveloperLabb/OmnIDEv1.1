@@ -339,7 +339,9 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
   };
 
   const handlePercentageChange = (_event: Event, newValue: number | number[]) => {
-    const value = Math.min(newValue as number, remainingPercentage);
+    // Ensure the value doesn't exceed 100%
+    const maxAllowed = Math.min(100, remainingPercentage);
+    const value = Math.min(newValue as number, maxAllowed);
     setFormData({
       ...formData,
       assignment_percent: value
@@ -371,10 +373,10 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
   // File dialog handlers using Electron API
   const handleInstructorZipBrowse = async () => {
     if (window.electronAPI) {
-      const filePath = await window.electronAPI.selectFile({ 
-        filters: [{ name: 'ZIP Files', extensions: ['zip'] }] 
+      const filePath = await window.electronAPI.selectFile({
+        filters: [{ name: 'ZIP Files', extensions: ['zip'] }]
       });
-      
+
       if (filePath) {
         setFormData({
           ...formData,
@@ -395,10 +397,10 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
       showSnackbar('Please select instructor file first', 'info');
       return;
     }
-    
+
     if (window.electronAPI) {
       const folderPath = await window.electronAPI.selectDirectory();
-      
+
       if (folderPath) {
         setFormData({
           ...formData,
@@ -452,7 +454,7 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                   required
                   fullWidth
                 />
-                
+
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DatePicker
                     label="Assignment Date"
@@ -474,12 +476,12 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                     <Typography id="assignment-percentage-slider" gutterBottom>
                       Assignment Percentage
                     </Typography>
-                    <Typography 
-                      variant="body2" 
+                    <Typography
+                      variant="body2"
                       color={remainingPercentage > 0 ? "text.secondary" : "error"}>
-                      {remainingPercentage === 0 
-                        ? "No percentage remaining" 
-                        : `${formData.assignment_percent}% (${remainingPercentage}% remaining)`}
+                      {remainingPercentage === 0
+                        ? "No percentage remaining"
+                        : `${formData.assignment_percent}% (${Math.min(100, remainingPercentage)}% remaining)`}
                     </Typography>
                   </Box>
                   <Slider
@@ -493,11 +495,11 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                       { value: Math.min(25, remainingPercentage), label: `${Math.min(25, remainingPercentage)}%` },
                       { value: Math.min(50, remainingPercentage), label: remainingPercentage >= 50 ? '50%' : '' },
                       { value: Math.min(75, remainingPercentage), label: remainingPercentage >= 75 ? '75%' : '' },
-                      { value: remainingPercentage, label: `${remainingPercentage}%` }
+                      { value: Math.min(100, remainingPercentage), label: `${Math.min(100, remainingPercentage)}%` }
                     ]}
                     disabled={remainingPercentage === 0}
                     min={0}
-                    max={remainingPercentage}
+                    max={Math.min(100, remainingPercentage)}
                   />
                 </Box>
 
@@ -530,15 +532,18 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                               <FolderOpenIcon />
                             </IconButton>
                           </Tooltip>
+                          {/* Fixed: Added span wrapper around disabled button */}
                           <Tooltip title="Run instructor file to get expected output">
-                            <IconButton 
-                              onClick={executeInstructorFileAndGetOutput} 
-                              edge="end"
-                              color="primary"
-                              disabled={!formData.instructor_zip_path || executingFile}
-                            >
-                              {executingFile ? <CircularProgress size={24} /> : <PlayArrowIcon />}
-                            </IconButton>
+                            <span> {/* This wrapper allows tooltip to work even when button is disabled */}
+                              <IconButton
+                                onClick={executeInstructorFileAndGetOutput}
+                                edge="end"
+                                color="primary"
+                                disabled={!formData.instructor_zip_path || executingFile}
+                              >
+                                {executingFile ? <CircularProgress size={24} /> : <PlayArrowIcon />}
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         </InputAdornment>
                       ),
@@ -615,20 +620,25 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
                   fullWidth
                   disabled={!formData.instructor_zip_path}
                   placeholder="Path to folder with student ZIP submissions"
-                  helperText={formData.instructor_zip_path 
-                    ? "Select the folder containing student ZIP submissions" 
+                  helperText={formData.instructor_zip_path
+                    ? "Select the folder containing student ZIP submissions"
                     : "Please select instructor file first"
                   }
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton 
-                          onClick={handleStudentFolderBrowse} 
-                          edge="end"
-                          disabled={!formData.instructor_zip_path}
-                        >
-                          <FolderOpenIcon />
-                        </IconButton>
+                        {/* Fixed: Added tooltip and span wrapper around disabled button */}
+                        <Tooltip title="Browse for student submissions folder">
+                          <span> {/* This wrapper allows tooltip to work even when button is disabled */}
+                            <IconButton
+                              onClick={handleStudentFolderBrowse}
+                              edge="end"
+                              disabled={!formData.instructor_zip_path}
+                            >
+                              <FolderOpenIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </InputAdornment>
                     ),
                   }}
@@ -659,9 +669,9 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
           </DialogContent>
           <DialogActions>
             <Button onClick={onClose}>Cancel</Button>
-            <Button 
-              type="submit" 
-              variant="contained" 
+            <Button
+              type="submit"
+              variant="contained"
               color="primary"
               disabled={loading || remainingPercentage === 0 || !isFormValid}
               startIcon={loading ? <CircularProgress size={24} /> : <SaveIcon />}
@@ -674,14 +684,14 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({ open, onClose, onSubm
 
       {/* Snackbar for notifications */}
       {snackbar && (
-        <Snackbar 
+        <Snackbar
           open={true}
-          autoHideDuration={6000} 
+          autoHideDuration={6000}
           onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >
-          <Alert 
-            onClose={handleCloseSnackbar} 
+          <Alert
+            onClose={handleCloseSnackbar}
             severity={snackbar.severity}
             sx={{ width: '100%' }}
           >
